@@ -1,0 +1,41 @@
+# Pison Project in Java
+
+This repository contains a Java implementation of the Pison, a scalable structural index construction for JSON analytics. The project includes classes for loading, processing, and querying JSON records. The code is organized into packages for easy management.
+
+## Prerequisites
+
+- **Java Development Kit (JDK):**  
+  Make sure you have the JDK installed. You can download it from [Oracle](https://www.oracle.com/java/technologies/javase-downloads.html) or [AdoptOpenJDK](https://adoptopenjdk.net/).  
+  Verify your installation by running:
+  ```bash
+  java -version
+  javac -version
+  ```
+
+## How to Compile and Run
+
+1. **Compile the Project:**  
+   Open a terminal or command prompt at the project root and run:
+   ```bash
+   javac -d bin src/bitmap/*.java src/records/*.java src/tests/*.java
+   ```
+   This command compiles all the Java source files and places the resulting `.class` files in the `bin` directory.
+
+2. **Run the Main Class:**  
+   Since `Main.java` is in the default package, run:
+   ```bash
+   java -cp bin Main
+   ```
+   This command runs your project using the compiled classes in the `bin` folder.
+
+## Notes for Beginners
+
+- **Understanding the Folder Structure:**  
+  The source files are kept in the `src` folder, and the compiled classes go into the `bin` folder.  
+  **Tip:** Make sure the `bin` folder is added to your `.gitignore` so that compiled files are not committed to GitHub.
+
+- **Working with Java:**  
+  When you modify your code, recompile using the provided `javac` command and run the project again using the `java` command.
+
+- **Troubleshooting:**  
+  If you encounter file path or permission issues, verify the file paths in your code and ensure you have the correct access rights.
