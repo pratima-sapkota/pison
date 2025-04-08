@@ -15,18 +15,19 @@ public class RecordLoader {
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(filePath));
             System.out.println("File size: " + bytes.length);
+
             String recordText = new String(bytes, StandardCharsets.UTF_8);
             int size = recordText.length();
             int remain = MAX_PAD - (size % MAX_PAD);
             StringBuilder sb = new StringBuilder(recordText);
+            
             for (int i = 0; i < remain; i++) {
                 sb.append('d');
             }
+
             recordText = sb.toString();
-            Record record = new Record();
-            record.text = recordText;
-            record.recStartPos = 0;
-            record.recLength = recordText.length();
+            Record record = new Record(recordText, 0, recordText.length(), true);
+            System.out.println("Record length: " + record.recLength);
             return record;
         } catch (IOException e) {
             e.printStackTrace(); // This will give you more details

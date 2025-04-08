@@ -17,15 +17,19 @@ This repository contains a Java implementation of the Pison, a scalable structur
 1. **Compile the Project:**  
    Open a terminal or command prompt at the project root and run:
    ```bash
-   javac -d bin src/bitmap/*.java src/records/*.java src/tests/*.java
+   javac -d bin src/bitmap/*.java src/records/*.java src/tests/*.java src/*.java
    ```
    This command compiles all the Java source files and places the resulting `.class` files in the `bin` directory.
 
 2. **Run the Main Class:**  
    Since `Main.java` is in the default package, run:
-   ```bash
-   java -cp bin Main
-   ```
+    ```bash
+    java -cp bin Main dataset/bestbuy_sample_large_record.json --threads=16 --levels=3
+    ```
+    or
+    ```
+    java -cp bin Main --file=dataset/bestbuy_sample_large_record.json --threads=16 --levels=3
+    ```
    This command runs your project using the compiled classes in the `bin` folder.
 
 ## Notes for Beginners
