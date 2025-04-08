@@ -1,5 +1,6 @@
 package bitmap;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import records.Record;
 
@@ -36,7 +37,7 @@ public class ParallelBitmap extends Bitmap {
         this.mParallelMode = NONSPECULATIVE;
 
         for (int i = 0; i < threadNum; ++i) {
-            mBitmaps[i] = new LocalBitmap(mRecord.substring(startIdx), depth);
+            mBitmaps[i] = new LocalBitmap(mRecord.substring(startIdx).getBytes(StandardCharsets.UTF_8), depth);
             mBitmaps[i].setThreadId(i);
             if (i < threadNum - 1) {
                 int padLen = 0;
@@ -89,7 +90,7 @@ public class ParallelBitmap extends Bitmap {
         long offset = 0;
 
         for (int i = 0; i <= mBitmaps[0].getMaxPositiveLevel(); ++i) {
-            mBitmaps[0].copyLevBitmapsToFinal(i);
+            mBitmaps[0].copyLevBitmapsToFinal(i, i);
         }
 
         offset += mBitmaps[0].getNumWords();

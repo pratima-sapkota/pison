@@ -1,5 +1,8 @@
 package bitmap;
 
+import java.nio.charset.StandardCharsets;
+import tokenizer.*;
+
 public class LocalBitmap extends Bitmap {
     // You might adjust MAX_LEVEL for your use case.
     private static final int MAX_LEVEL = 32;
@@ -29,8 +32,8 @@ public class LocalBitmap extends Bitmap {
 
     // Variables used for context inference and iteration
     private long[] mQuoteBitmap;
-    private int mStartWordId;
-    private int mEndWordId;
+    private long mStartWordId;
+    private long mEndWordId;
     private long mStartInStrBitmap;
     private long mEndInStrBitmap;
     private int mMaxPositiveLevel;
@@ -98,6 +101,84 @@ public class LocalBitmap extends Bitmap {
         super.finalize();
     }
 
+    public int getThreadId() {
+        return mThreadId;
+    }
+
+    public int getNumWords() {
+        return mNumWords;
+    }
+
+    public int getMinNegativeLevel() {
+        return mMinNegativeLevel;
+    }
+
+    public int getMaxPositiveLevel() {
+        return mMaxPositiveLevel;
+    }
+
+    public int getEndLevel() {
+        return mEndLevel;
+    }
+
+    public long getStartInStrBitmap() {
+        return mStartInStrBitmap;
+    }
+
+    public long getEndInStrBitmap() {
+        return mEndInStrBitmap;
+    }
+
+    // Setter methods
+    public void setStartWordId(long startWordId) {
+        mStartWordId = startWordId;
+    }
+
+    public void setEndWordId(long endWordId) {
+        mEndWordId = endWordId;
+    }
+
+    public void setThreadId(int threadId) {
+        mThreadId = threadId;
+    }
+
+
+    public void setStartInStrBitmap(long startInStrBitmap) {
+        mStartInStrBitmap = startInStrBitmap;
+    }
+
+    public void setEndInStrBitmap(long endInStrBitmap) {
+        mEndInStrBitmap = endInStrBitmap;
+    }
+
+    public void copyLevBitmapsToFinal(int level, int idx) {
+        if (mLevColonBitmap[level] != null) {
+            mFinalLevColonBitmap[idx] = mLevColonBitmap[level];
+            // mLevColonBitmap[level] = null;
+        }
+        if (mLevCommaBitmap[level] != null) {
+            mFinalLevCommaBitmap[idx] = mLevCommaBitmap[level];
+            // mLevCommaBitmap[level] = null;
+        }
+    }
+
+    public void copyNegLevBitmapsToFinal(int level, int idx) {
+        if (mNegLevColonBitmap[level] != null) {
+            mFinalLevColonBitmap[idx] = mNegLevColonBitmap[level];
+            // mNegLevColonBitmap[level] = null;
+        }
+        if (mNegLevCommaBitmap[level] != null) {
+            mFinalLevCommaBitmap[idx] = mNegLevCommaBitmap[level];
+            // mNegLevCommaBitmap[level] = null;
+        }
+    }
+
+    public void flipStrBitmapAt(int idx) {
+        if (mStrBitmap != null) {
+            mStrBitmap[idx] = ~mStrBitmap[idx];
+        }
+    }
+
     // Set record length and initialize related arrays.
     public void setRecordLength(int length) {
         mRecordLength = length;
@@ -115,7 +196,7 @@ public class LocalBitmap extends Bitmap {
         for (int j = 0; j < 2; j++) {
             mNumTrial++;
             int state = startStates[j];
-            tkn.createIterator(mRecord, state);
+            tkn.createIterator(new String(mRecord, StandardCharsets.UTF_8), state);
             while (true) {
                 int tknStatus = tkn.hasNextToken();
                 if (tknStatus == Tokenizer.END)
@@ -157,7 +238,11 @@ public class LocalBitmap extends Bitmap {
         long strMask;
 
         long lb_mask, rb_mask, cb_mask;
-        long lb_bit = 0, rb_bit = 0, cb_bit;
+
+        long lb_bit = 0;
+        long rb_bit = 0;
+        long cb_bit = 0;
+
         long first, second;
         int cur_level = -1;
         int top_word = -1;
@@ -491,7 +576,9 @@ public class LocalBitmap extends Bitmap {
         long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
         long strMask;
         long lb_mask, rb_mask, cb_mask;
-        long lb_bit, rb_bit, cb_bit;
+        long lb_bit;
+        long rb_bit; 
+        long cb_bit = 0;
         long first, second;
         int cur_level = -1;
 
