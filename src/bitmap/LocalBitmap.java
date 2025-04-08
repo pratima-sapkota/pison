@@ -129,6 +129,10 @@ public class LocalBitmap extends Bitmap {
         return mEndInStrBitmap;
     }
 
+     public int getFinalLevSize() {
+        return mFinalLevColonBitmap.length;
+    }
+
     // Setter methods
     public void setStartWordId(long startWordId) {
         mStartWordId = startWordId;
@@ -152,24 +156,29 @@ public class LocalBitmap extends Bitmap {
     }
 
     public void copyLevBitmapsToFinal(int level, int idx) {
-        if (mLevColonBitmap[level] != null) {
-            mFinalLevColonBitmap[idx] = mLevColonBitmap[level];
-            // mLevColonBitmap[level] = null;
+        if (level < 0 || level >= mFinalLevColonBitmap.length) {
+            System.err.println("copyLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
+            return;
         }
-        if (mLevCommaBitmap[level] != null) {
-            mFinalLevCommaBitmap[idx] = mLevCommaBitmap[level];
-            // mLevCommaBitmap[level] = null;
+        // Optionally, you can add an index check for idx if needed.
+        if (idx < mLevColonBitmap.length && mLevColonBitmap[idx] != null) {
+            mFinalLevColonBitmap[level] = mLevColonBitmap[idx];
+        }
+        if (idx < mLevCommaBitmap.length && mLevCommaBitmap[idx] != null) {
+            mFinalLevCommaBitmap[level] = mLevCommaBitmap[idx];
         }
     }
 
     public void copyNegLevBitmapsToFinal(int level, int idx) {
-        if (mNegLevColonBitmap[level] != null) {
-            mFinalLevColonBitmap[idx] = mNegLevColonBitmap[level];
-            // mNegLevColonBitmap[level] = null;
+        if (level < 0 || level >= mFinalLevColonBitmap.length) {
+            System.err.println("copyNegLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
+            return;
         }
-        if (mNegLevCommaBitmap[level] != null) {
-            mFinalLevCommaBitmap[idx] = mNegLevCommaBitmap[level];
-            // mNegLevCommaBitmap[level] = null;
+        if (idx < mNegLevColonBitmap.length && mNegLevColonBitmap[idx] != null) {
+            mFinalLevColonBitmap[level] = mNegLevColonBitmap[idx];
+        }
+        if (idx < mNegLevCommaBitmap.length && mNegLevCommaBitmap[idx] != null) {
+            mFinalLevCommaBitmap[level] = mNegLevCommaBitmap[idx];
         }
     }
 

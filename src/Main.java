@@ -48,6 +48,7 @@ public class Main {
         String filePath = config.get("file");
         int threadNum = Integer.parseInt(config.getOrDefault("threads", "16"));
         int levelNum = Integer.parseInt(config.getOrDefault("levels", "3"));  
+        System.out.println("Thread number: " + threadNum);
 
         if (filePath == null) {
             System.out.println("Usage: java Main --file=path/to/file.json [--threads=N] [--levels=N]");
@@ -73,7 +74,7 @@ public class Main {
         System.out.println("Total records: " + recordSet.numRecs);
 
         // Construct bitmap and create an iterator to query the record
-        // Bitmap bm = BitmapConstructor.construct(rec, threadNum, levelNum);
+        Bitmap bm = BitmapConstructor.construct(record, threadNum, levelNum);
         // BitmapIterator iter = BitmapConstructor.getIterator(bm);
         // String output = query(iter);
 

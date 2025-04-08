@@ -97,21 +97,35 @@ public class ParallelBitmap extends Bitmap {
         mBitmaps[0].setStartWordId(0);
         mBitmaps[0].setEndWordId(offset);
 
+        System.out.println("Initial bitmap length: " + offset);
+        System.out.println("Initial bitmap level: " + curLevel);
         for (int i = 1; i < mThreadNum; ++i) {
             mBitmaps[i].setStartWordId(offset);
             mBitmaps[i].setEndWordId(offset + mBitmaps[i].getNumWords());
 
-            for (int j = 1; j <= -mBitmaps[i].getMinNegativeLevel() && (curLevel - j + 1) >= 0; ++j) {
-                mBitmaps[i].copyNegLevBitmapsToFinal(curLevel - j + 1, j);
+            for (int j = 1; j <= -mBitmaps[i].getMinNegativeLevel(); ++j) {
+                int targetLevel = curLevel - j + 1;
+                if (targetLevel >= 0 && targetLevel < mBitmaps[i].getFinalLevSize()) {
+                    mBitmaps[i].copyNegLevBitmapsToFinal(targetLevel, j);
+                } else {
+                    System.err.println("Skipping negative level index " + targetLevel + " for bitmap index " + i);
+                }
             }
 
-            for (int j = 0; j <= mBitmaps[i].getMaxPositiveLevel() && (curLevel + j + 1) >= 0; ++j) {
-                mBitmaps[i].copyLevBitmapsToFinal(curLevel + j + 1, j);
+            for (int j = 0; j <= mBitmaps[i].getMaxPositiveLevel(); ++j) {
+                int targetLevel = curLevel + j + 1;
+                if (targetLevel >= 0 && targetLevel < mBitmaps[i].getFinalLevSize()) {
+                    mBitmaps[i].copyLevBitmapsToFinal(targetLevel, j);
+                } else {
+                    System.err.println("Skipping positive level index " + targetLevel + " for bitmap index " + i);
+                }
             }
 
             curLevel += (mBitmaps[i].getEndLevel() + 1);
             offset += mBitmaps[i].getNumWords();
         }
+        System.out.println("Final bitmap length: " + offset);
+        System.out.println("Final bitmap level: " + curLevel);
     }
 
     public LocalBitmap getBitmap(int i) {
