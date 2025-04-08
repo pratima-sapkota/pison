@@ -24,35 +24,6 @@ public class Main {
     //     return output.toString();
     // }
 
-    public static void main(String[] args) {
-        // Parse keyword arguments
-        Map<String, String> config = parseArgs(args);
-
-        String filePath = config.get("file");
-        int threadNum = Integer.parseInt(config.getOrDefault("threads", "16"));
-        int levelNum = Integer.parseInt(config.getOrDefault("levels", "3"));  
-
-        if (filePath == null) {
-            System.out.println("Usage: java Main --file=path/to/file.json [--threads=N] [--levels=N]");
-            System.exit(-1);
-        }
-
-        Record rec = RecordLoader.loadRecord(filePath);
-
-        if (rec == null) {
-            System.out.println("Record loading fails.");
-            System.exit(-1);
-        }
-        System.out.println("Record loading succeeds.");
-
-        // Construct bitmap and create an iterator to query the record
-        Bitmap bm = BitmapConstructor.construct(rec, threadNum, levelNum);
-        // BitmapIterator iter = BitmapConstructor.getIterator(bm);
-        // String output = query(iter);
-
-        // System.out.println("matches are: " + output);
-    }
-
     private static Map<String, String> parseArgs(String[] args) {
         Map<String, String> argMap = new HashMap<>();
 
@@ -70,4 +41,42 @@ public class Main {
         return argMap;
     }
 
+    public static void main(String[] args) {
+        // Parse keyword arguments
+        Map<String, String> config = parseArgs(args);
+
+        String filePath = config.get("file");
+        int threadNum = Integer.parseInt(config.getOrDefault("threads", "16"));
+        int levelNum = Integer.parseInt(config.getOrDefault("levels", "3"));  
+
+        if (filePath == null) {
+            System.out.println("Usage: java Main --file=path/to/file.json [--threads=N] [--levels=N]");
+            System.exit(-1);
+        }
+
+        // Load the file as a single record
+        System.out.println("\nLoading as a single record from: " + filePath);
+        Record record = RecordLoader.loadRecord(filePath);
+        if (record == null) {
+            System.out.println("Record loading fails.");
+            System.exit(-1);
+        }
+        System.out.println("Record length: " + record.recLength);
+
+        // Load the file as a set of records
+        System.out.println("\nLoading as a record set from: " + filePath);
+        RecordSet recordSet = RecordLoader.loadRecordSet(filePath);        
+        if (recordSet == null) {
+            System.out.println("Record loading fails.");
+            System.exit(-1);
+        }
+        System.out.println("Total records: " + recordSet.numRecs);
+
+        // Construct bitmap and create an iterator to query the record
+        // Bitmap bm = BitmapConstructor.construct(rec, threadNum, levelNum);
+        // BitmapIterator iter = BitmapConstructor.getIterator(bm);
+        // String output = query(iter);
+
+        // System.out.println("matches are: " + output);
+    }
 }

@@ -26,11 +26,11 @@ public class Tokenizer {
     private int mCurTknType;
     private int mNextTknPos;
 
-    // Constructor with default state OUT
+    // Empty Constructor
     public Tokenizer() {
     }
     
-    // Constructor
+    // Constructor with chunk and state
     public Tokenizer(String chunk, int state) {
         createIterator(chunk, state);
     }
@@ -44,6 +44,7 @@ public class Tokenizer {
         mNextTknPos = 0;
     }
     
+    // Toggles the state between IN and OUT
     public int oppositeState(int state) {
         if (state == IN)
             return OUT;
