@@ -2,12 +2,18 @@ package bitmap;
 
 import java.nio.charset.StandardCharsets;
 import tokenizer.*;
+// import jdk.incubator.vector.ByteVector;
+// import jdk.incubator.vector.VectorMask;
+// import jdk.incubator.vector.VectorOperators;
+// import jdk.incubator.vector.VectorSpecies;
 
 public class LocalBitmap extends Bitmap {
-    // You might adjust MAX_LEVEL for your use case.
+    // Constants
     private static final int MAX_LEVEL = 32;
     public static final int UNKNOWN = -2;
-
+    // Using 256-bit wide species (32 bytes) for byte vectors.
+    //private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_256;
+    
     // Member variables
     private int mNumTknErr;
     private int mNumTrial;
@@ -17,19 +23,19 @@ public class LocalBitmap extends Bitmap {
     private int mNumTmpWords;  // record length/32
     private int mNumWords;     // record length/64
     private int mDepth;
-
+    
     // Bitmaps for structural characters
     private long[] mEscapeBitmap, mStrBitmap, mColonBitmap, mCommaBitmap;
     private long[] mLbracketBitmap, mRbracketBitmap, mLbraceBitmap, mRbraceBitmap;
-
-    // Leveled bitmap arrays (each element will be allocated on demand)
+    
+    // Leveled bitmap arrays (allocated on demand)
     private long[][] mLevColonBitmap = new long[MAX_LEVEL][];
     private long[][] mLevCommaBitmap = new long[MAX_LEVEL][];
     private long[][] mNegLevColonBitmap = new long[MAX_LEVEL][];
     private long[][] mNegLevCommaBitmap = new long[MAX_LEVEL][];
     private long[][] mFinalLevColonBitmap = new long[MAX_LEVEL][];
     private long[][] mFinalLevCommaBitmap = new long[MAX_LEVEL][];
-
+    
     // Variables used for context inference and iteration
     private long[] mQuoteBitmap;
     private long mStartWordId;
@@ -39,11 +45,10 @@ public class LocalBitmap extends Bitmap {
     private int mMaxPositiveLevel;
     private int mMinNegativeLevel;
     private int mEndLevel;
-
+    
     // Default constructor.
-    public LocalBitmap() {
-    }
-
+    public LocalBitmap() { }
+    
     // Constructor with record and level number.
     public LocalBitmap(byte[] record, int levelNum) {
         mThreadId = 0;
@@ -75,8 +80,8 @@ public class LocalBitmap extends Bitmap {
         mNumTknErr = 0;
         mNumTrial = 0;
     }
-
-    // Free allocated resources (in Java simply null out references).
+    
+    // Free allocated resources (here simply nulling references for GC).
     public void freeMemory() {
         for (int i = 0; i < MAX_LEVEL; i++) {
             mLevColonBitmap[i] = null;
@@ -94,120 +99,58 @@ public class LocalBitmap extends Bitmap {
         mLbracketBitmap = null;
         mRbracketBitmap = null;
     }
-
+    
     @Override
     protected void finalize() throws Throwable {
         freeMemory();
         super.finalize();
     }
-
-    public int getThreadId() {
-        return mThreadId;
-    }
-
-    public int getNumWords() {
-        return mNumWords;
-    }
-
-    public int getMinNegativeLevel() {
-        return mMinNegativeLevel;
-    }
-
-    public int getMaxPositiveLevel() {
-        return mMaxPositiveLevel;
-    }
-
-    public int getEndLevel() {
-        return mEndLevel;
-    }
-
-    public long getStartInStrBitmap() {
-        return mStartInStrBitmap;
-    }
-
-    public long getEndInStrBitmap() {
-        return mEndInStrBitmap;
-    }
-
-    public int getFinalLevSize() {
-        return mFinalLevColonBitmap.length;
-    }
-
-    public long getStartWordId() {
-        return mStartWordId;
-    }
-
-    public long getEndWordId() {
-        return mEndWordId;
-    }
-
-    public long[] getQuoteBitmap() {
-        return mQuoteBitmap;
-    }
-
-    public long[][] getFinalLevColonBitmap() {
-        return mFinalLevColonBitmap;
-    }
-
-    public long[][] getFinalLevCommaBitmap() {
-        return mFinalLevCommaBitmap;
-    }
-
-    // Setter methods
-    public void setStartWordId(long startWordId) {
-        mStartWordId = startWordId;
-    }
-
-    public void setEndWordId(long endWordId) {
-        mEndWordId = endWordId;
-    }
-
-    public void setThreadId(int threadId) {
-        mThreadId = threadId;
-    }
-
-
-    public void setStartInStrBitmap(long startInStrBitmap) {
-        mStartInStrBitmap = startInStrBitmap;
-    }
-
-    public void setEndInStrBitmap(long endInStrBitmap) {
-        mEndInStrBitmap = endInStrBitmap;
-    }
-
+    
+    // --- Getters and Setters ---
+    public int getThreadId() { return mThreadId; }
+    public int getNumWords() { return mNumWords; }
+    public int getMinNegativeLevel() { return mMinNegativeLevel; }
+    public int getMaxPositiveLevel() { return mMaxPositiveLevel; }
+    public int getEndLevel() { return mEndLevel; }
+    public long getStartInStrBitmap() { return mStartInStrBitmap; }
+    public long getEndInStrBitmap() { return mEndInStrBitmap; }
+    public int getFinalLevSize() { return mFinalLevColonBitmap.length; }
+    public long getStartWordId() { return mStartWordId; }
+    public long getEndWordId() { return mEndWordId; }
+    public long[] getQuoteBitmap() { return mQuoteBitmap; }
+    public long[][] getFinalLevColonBitmap() { return mFinalLevColonBitmap; }
+    public long[][] getFinalLevCommaBitmap() { return mFinalLevCommaBitmap; }
+    
+    public void setStartWordId(long startWordId) { mStartWordId = startWordId; }
+    public void setEndWordId(long endWordId) { mEndWordId = endWordId; }
+    public void setThreadId(int threadId) { mThreadId = threadId; }
+    public void setStartInStrBitmap(long startInStrBitmap) { mStartInStrBitmap = startInStrBitmap; }
+    public void setEndInStrBitmap(long endInStrBitmap) { mEndInStrBitmap = endInStrBitmap; }
+    
     public void copyLevBitmapsToFinal(int level, int idx) {
         if (level < 0 || level >= mFinalLevColonBitmap.length) {
             System.err.println("copyLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
             return;
         }
-        // Optionally, you can add an index check for idx if needed.
-        if (idx < mLevColonBitmap.length && mLevColonBitmap[idx] != null) {
-            mFinalLevColonBitmap[level] = mLevColonBitmap[idx];
-        }
-        if (idx < mLevCommaBitmap.length && mLevCommaBitmap[idx] != null) {
-            mFinalLevCommaBitmap[level] = mLevCommaBitmap[idx];
-        }
+        mFinalLevColonBitmap[level] = mLevColonBitmap[idx];
+        mFinalLevCommaBitmap[level] = mLevCommaBitmap[idx];
     }
-
+    
     public void copyNegLevBitmapsToFinal(int level, int idx) {
         if (level < 0 || level >= mFinalLevColonBitmap.length) {
             System.err.println("copyNegLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
             return;
         }
-        if (idx < mNegLevColonBitmap.length && mNegLevColonBitmap[idx] != null) {
-            mFinalLevColonBitmap[level] = mNegLevColonBitmap[idx];
-        }
-        if (idx < mNegLevCommaBitmap.length && mNegLevCommaBitmap[idx] != null) {
-            mFinalLevCommaBitmap[level] = mNegLevCommaBitmap[idx];
-        }
+        mFinalLevColonBitmap[level] = mNegLevColonBitmap[idx];
+        mFinalLevCommaBitmap[level] = mNegLevCommaBitmap[idx];
     }
-
+    
     public void flipStrBitmapAt(int idx) {
         if (mStrBitmap != null) {
             mStrBitmap[idx] = ~mStrBitmap[idx];
         }
     }
-
+    
     // Set record length and initialize related arrays.
     public void setRecordLength(int length) {
         mRecordLength = length;
@@ -215,8 +158,8 @@ public class LocalBitmap extends Bitmap {
         mNumWords = length / 64;
         mQuoteBitmap = new long[mNumWords];
     }
-
-    // Context inference using Tokenizer (speculative inference).
+    
+    // Context inference using Tokenizer.
     public int contextInference() {
         Tokenizer tkn = new Tokenizer();
         int[] startStates = { Tokenizer.OUT, Tokenizer.IN };
@@ -246,32 +189,31 @@ public class LocalBitmap extends Bitmap {
         } else {
             mStartInStrBitmap = 0L;
         }
+        System.out.println("inference result num of trails: " + mNumTrial + " num of token error " + mNumTknErr);
+        System.out.println("inference result " + startState + " " + getStartState);
         return getStartState ? startState : UNKNOWN;
     }
-
-    // A Java implementation of the non speculative parallel index construction.
+    
+    // --- Non-Speculative Index Construction ---
+    // This method closely emulates the C++ version using Panama Vector API calls.
     public void nonSpecIndexConstruction() {
-        // Define the structural characters.
-        byte QUOTE = 0x22;
-        byte COLON = 0x3a;
-        byte ESCAPE = 0x5c;
-        byte LBRACE = 0x7b;
-        byte RBRACE = 0x7d;
-        byte COMMA = 0x2c;
+        // Define structural character constants.
+        byte QUOTE    = 0x22;
+        byte COLON    = 0x3a;
+        byte ESCAPE   = 0x5c;
+        byte LBRACE   = 0x7b;
+        byte RBRACE   = 0x7d;
+        byte COMMA    = 0x2c;
         byte LBRACKET = 0x5b;
         byte RBRACKET = 0x5d;
-
+        
         long colonbit0 = 0, quotebit0 = 0, escapebit0 = 0, lbracebit0 = 0, rbracebit0 = 0;
         long commabit0 = 0, lbracketbit0 = 0, rbracketbit0 = 0;
         long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
         long strMask;
-
+        
         long lb_mask, rb_mask, cb_mask;
-
-        long lb_bit = 0;
-        long rb_bit = 0;
-        long cb_bit = 0;
-
+        long lb_bit = 0, rb_bit = 0, cb_bit = 0;
         long first, second;
         int cur_level = -1;
         int top_word = -1;
@@ -279,22 +221,21 @@ public class LocalBitmap extends Bitmap {
         long prev_iter_inside_quote = mStartInStrBitmap;
         final long even_bits = 0x5555555555555555L;
         final long odd_bits = ~even_bits;
-
-        // Process each 32 byte block (temporary word).
+        
+        // Process each 32-byte block (temporary word).
         for (int j = 0; j < mNumTmpWords; j++) {
-            // Reset bit masks.
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int i = j * 32;
-            // Simulate a 256-bit load and compute a movemask for each character.
-            colonbit = movemask(mRecord, i, 32, COLON);
-            quotebit = movemask(mRecord, i, 32, QUOTE);
-            escapebit = movemask(mRecord, i, 32, ESCAPE);
-            lbracebit = movemask(mRecord, i, 32, LBRACE);
-            rbracebit = movemask(mRecord, i, 32, RBRACE);
-            commabit = movemask(mRecord, i, 32, COMMA);
-            lbracketbit = movemask(mRecord, i, 32, LBRACKET);
-            rbracketbit = movemask(mRecord, i, 32, RBRACKET);
-
+            // Use Panama Vector API to load 32 bytes and compute movemask for each target.
+            colonbit    = movemaskVec(i, COLON);
+            quotebit    = movemaskVec(i, QUOTE);
+            escapebit   = movemaskVec(i, ESCAPE);
+            lbracebit   = movemaskVec(i, LBRACE);
+            rbracebit   = movemaskVec(i, RBRACE);
+            commabit    = movemaskVec(i, COMMA);
+            lbracketbit = movemaskVec(i, LBRACKET);
+            rbracketbit = movemaskVec(i, RBRACKET);
+            
             if (j % 2 == 0) {
                 // Save first half.
                 colonbit0 = colonbit;
@@ -307,17 +248,17 @@ public class LocalBitmap extends Bitmap {
                 rbracketbit0 = rbracketbit;
                 continue;
             } else {
-                // Combine two halves into a 64-bit word.
-                colonbit = (colonbit << 32) | colonbit0;
-                quotebit = (quotebit << 32) | quotebit0;
-                escapebit = (escapebit << 32) | escapebit0;
-                lbracebit = (lbracebit << 32) | lbracebit0;
-                rbracebit = (rbracebit << 32) | rbracebit0;
-                commabit = (commabit << 32) | commabit0;
+                // Combine two 32-bit halves into one 64-bit word.
+                colonbit    = (colonbit << 32) | colonbit0;
+                quotebit    = (quotebit << 32) | quotebit0;
+                escapebit   = (escapebit << 32) | escapebit0;
+                lbracebit   = (lbracebit << 32) | lbracebit0;
+                rbracebit   = (rbracebit << 32) | rbracebit0;
+                commabit    = (commabit << 32) | commabit0;
                 lbracketbit = (lbracketbit << 32) | lbracketbit0;
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
                 top_word++;
-
+                
                 // Step 2: Update structural quote bitmap.
                 long bs_bits = escapebit;
                 long start_edges = bs_bits & ~(bs_bits << 1);
@@ -336,28 +277,28 @@ public class LocalBitmap extends Bitmap {
                 long odd_start_even_end = odd_carry_ends & even_bits;
                 long odd_ends = even_start_odd_end | odd_start_even_end;
                 long quote_bits = quotebit & ~odd_ends;
-                mQuoteBitmap[top_word] = quote_bits;
-
-                // Compute string mask.
+                mQuoteBitmap[++top_word] = quote_bits;
+                
+                // Step 3: Compute string mask.
                 strMask = computeStringMask(quote_bits, prev_iter_inside_quote);
                 prev_iter_inside_quote = (strMask < 0) ? 0xffffffffffffffffL : 0L;
-
+                
                 // Step 4: Exclude characters inside strings.
                 long tmp = ~strMask;
-                colonbit &= tmp;
-                lbracebit &= tmp;
-                rbracebit &= tmp;
-                commabit &= tmp;
+                colonbit   &= tmp;
+                lbracebit  &= tmp;
+                rbracebit  &= tmp;
+                commabit   &= tmp;
                 lbracketbit &= tmp;
                 rbracketbit &= tmp;
-
+                
                 // Step 5: Generate leveled bitmaps.
                 lb_mask = lbracebit | lbracketbit;
                 rb_mask = rbracebit | rbracketbit;
                 cb_mask = lb_mask | rb_mask;
                 lb_bit = lb_mask & -lb_mask;
                 rb_bit = rb_mask & -rb_mask;
-
+                
                 if (cb_mask == 0) {
                     if (cur_level >= 0 && cur_level <= mDepth) {
                         if (mLevColonBitmap[cur_level] == null) {
@@ -493,8 +434,8 @@ public class LocalBitmap extends Bitmap {
             mDepth = mMaxPositiveLevel;
         mEndLevel = cur_level;
     }
-
-    // Build string mask bitmap.
+    
+    // --- Build String Mask Bitmap ---
     public void buildStringMaskBitmap() {
         if (mQuoteBitmap == null)
             mQuoteBitmap = new long[mNumWords];
@@ -512,39 +453,39 @@ public class LocalBitmap extends Bitmap {
             mLbracketBitmap = new long[mNumWords];
         if (mRbracketBitmap == null)
             mRbracketBitmap = new long[mNumWords];
-
-        byte QUOTE = 0x22;
-        byte COLON = 0x3a;
-        byte ESCAPE = 0x5c;
-        byte LBRACE = 0x7b;
-        byte RBRACE = 0x7d;
-        byte COMMA = 0x2c;
+        
+        byte QUOTE    = 0x22;
+        byte COLON    = 0x3a;
+        byte ESCAPE   = 0x5c;
+        byte LBRACE   = 0x7b;
+        byte RBRACE   = 0x7d;
+        byte COMMA    = 0x2c;
         byte LBRACKET = 0x5b;
         byte RBRACKET = 0x5d;
-
+        
         long colonbit0 = 0, quotebit0 = 0, escapebit0 = 0, lbracebit0 = 0, rbracebit0 = 0;
         long commabit0 = 0, lbracketbit0 = 0, rbracketbit0 = 0;
         long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
         long strMask;
-
+        
         int top_word = -1;
         long prev_iter_ends_odd_backslash = 0L;
         long prev_iter_inside_quote = mStartInStrBitmap;
         final long even_bits = 0x5555555555555555L;
         final long odd_bits = ~even_bits;
-
+        
         for (int j = 0; j < mNumTmpWords; j++) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int i = j * 32;
-            colonbit = movemask(mRecord, i, 32, COLON);
-            quotebit = movemask(mRecord, i, 32, QUOTE);
-            escapebit = movemask(mRecord, i, 32, ESCAPE);
-            lbracebit = movemask(mRecord, i, 32, LBRACE);
-            rbracebit = movemask(mRecord, i, 32, RBRACE);
-            commabit = movemask(mRecord, i, 32, COMMA);
-            lbracketbit = movemask(mRecord, i, 32, LBRACKET);
-            rbracketbit = movemask(mRecord, i, 32, RBRACKET);
-
+            colonbit    = movemaskVec(i, COLON);
+            quotebit    = movemaskVec(i, QUOTE);
+            escapebit   = movemaskVec(i, ESCAPE);
+            lbracebit   = movemaskVec(i, LBRACE);
+            rbracebit   = movemaskVec(i, RBRACE);
+            commabit    = movemaskVec(i, COMMA);
+            lbracketbit = movemaskVec(i, LBRACKET);
+            rbracketbit = movemaskVec(i, RBRACKET);
+            
             if (j % 2 == 0) {
                 colonbit0 = colonbit;
                 quotebit0 = quotebit;
@@ -556,23 +497,23 @@ public class LocalBitmap extends Bitmap {
                 rbracketbit0 = rbracketbit;
                 continue;
             } else {
-                colonbit = (colonbit << 32) | colonbit0;
-                quotebit = (quotebit << 32) | quotebit0;
-                escapebit = (escapebit << 32) | escapebit0;
-                lbracebit = (lbracebit << 32) | lbracebit0;
-                rbracebit = (rbracebit << 32) | rbracebit0;
-                commabit = (commabit << 32) | commabit0;
+                colonbit    = (colonbit << 32) | colonbit0;
+                quotebit    = (quotebit << 32) | quotebit0;
+                escapebit   = (escapebit << 32) | escapebit0;
+                lbracebit   = (lbracebit << 32) | lbracebit0;
+                rbracebit   = (rbracebit << 32) | rbracebit0;
+                commabit    = (commabit << 32) | commabit0;
                 lbracketbit = (lbracketbit << 32) | lbracketbit0;
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
                 top_word++;
-
-                mColonBitmap[top_word] = colonbit;
-                mCommaBitmap[top_word] = commabit;
-                mLbraceBitmap[top_word] = lbracebit;
-                mRbraceBitmap[top_word] = rbracebit;
+                
+                mColonBitmap[top_word]    = colonbit;
+                mCommaBitmap[top_word]    = commabit;
+                mLbraceBitmap[top_word]   = lbracebit;
+                mRbraceBitmap[top_word]   = rbracebit;
                 mLbracketBitmap[top_word] = lbracketbit;
                 mRbracketBitmap[top_word] = rbracketbit;
-
+                
                 long bs_bits = escapebit;
                 long start_edges = bs_bits & ~(bs_bits << 1);
                 long even_start_mask = even_bits ^ prev_iter_ends_odd_backslash;
@@ -591,7 +532,7 @@ public class LocalBitmap extends Bitmap {
                 long odd_ends = even_start_odd_end | odd_start_even_end;
                 long quote_bits = quotebit & ~odd_ends;
                 mQuoteBitmap[top_word] = quote_bits;
-
+                
                 strMask = computeStringMask(quote_bits, prev_iter_inside_quote);
                 mStrBitmap[top_word] = strMask;
                 prev_iter_inside_quote = (strMask < 0) ? 0xffffffffffffffffL : 0L;
@@ -599,35 +540,34 @@ public class LocalBitmap extends Bitmap {
         }
         mEndInStrBitmap = prev_iter_inside_quote;
     }
-
-    // Build leveled bitmap using previously computed bitmaps.
+    
+    // --- Build Leveled Bitmap ---
     public void buildLeveledBitmap() {
-        long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
+        long colonbit, commabit, lbracebit, rbracebit, lbracketbit, rbracketbit;
         long strMask;
         long lb_mask, rb_mask, cb_mask;
-        long lb_bit;
-        long rb_bit; 
+        long lb_bit, rb_bit; 
         long cb_bit = 0;
         long first, second;
         int cur_level = -1;
-
+        
         for (int j = 0; j < mNumWords; j++) {
-            colonbit = mColonBitmap[j];
-            commabit = mCommaBitmap[j];
-            lbracebit = mLbraceBitmap[j];
-            rbracebit = mRbraceBitmap[j];
+            colonbit    = mColonBitmap[j];
+            commabit    = mCommaBitmap[j];
+            lbracebit   = mLbraceBitmap[j];
+            rbracebit   = mRbraceBitmap[j];
             lbracketbit = mLbracketBitmap[j];
             rbracketbit = mRbracketBitmap[j];
-            strMask = mStrBitmap[j];
-
+            strMask     = mStrBitmap[j];
+            
             long tmp = ~strMask;
-            colonbit &= tmp;
-            lbracebit &= tmp;
-            rbracebit &= tmp;
-            commabit &= tmp;
+            colonbit   &= tmp;
+            lbracebit  &= tmp;
+            rbracebit  &= tmp;
+            commabit   &= tmp;
             lbracketbit &= tmp;
             rbracketbit &= tmp;
-
+            
             lb_mask = lbracebit | lbracketbit;
             rb_mask = rbracebit | rbracketbit;
             cb_mask = lb_mask | rb_mask;
@@ -750,19 +690,41 @@ public class LocalBitmap extends Bitmap {
             mDepth = mMaxPositiveLevel;
         mEndLevel = cur_level;
     }
-
-    // Helper: simulate _mm256_movemask_epi8 by scanning 32 bytes.
-    private int movemask(byte[] data, int offset, int length, byte target) {
-        int mask = 0;
-        for (int i = 0; i < length && (offset + i) < data.length; i++) {
-            if (data[offset + i] == target) {
-                mask |= (1 << i);
-            }
+    
+    // --- Helper: movemaskVec using Panama Vector API ---
+    // Loads 32 bytes from mRecord starting at offset and returns a 32-bit mask as a long.
+  // Helper: movemaskVec implemented without vector API (plain loop).
+private long movemaskVec(int offset, byte target) {
+    long mask = 0L;
+    // Process 32 bytes starting at offset.
+    for (int i = 0; i < 32 && (offset + i) < mRecord.length; i++) {
+        if (mRecord[offset + i] == target) {
+            mask |= (1L << i);
         }
-        return mask;
     }
+    return mask;
+}
 
-    // Helper: compute a string mask by performing a cumulative parity (simulating a carry less multiply).
+    
+    // --- Helper: addWithOverflow ---
+    private AddResult addWithOverflow(long a, long b) {
+        long sum = a + b;
+        boolean overflow = Long.compareUnsigned(sum, a) < 0;
+        return new AddResult(sum, overflow);
+    }
+    
+    private static class AddResult {
+        long sum;
+        boolean overflow;
+        AddResult(long sum, boolean overflow) {
+            this.sum = sum;
+            this.overflow = overflow;
+        }
+    }
+    
+    // --- Helper: computeStringMask ---
+    // Emulates a cumulative parity operation (similar in spirit to a carry-less multiply) that
+    // produces a mask indicating positions that are inside a string.
     private long computeStringMask(long quoteBits, long prevInside) {
         long mask = 0L;
         boolean inQuote = (prevInside != 0);
@@ -775,23 +737,5 @@ public class LocalBitmap extends Bitmap {
             }
         }
         return mask ^ prevInside;
-    }
-
-    // Helper: perform addition with unsigned overflow detection.
-    private AddResult addWithOverflow(long a, long b) {
-        long sum = a + b;
-        boolean overflow = Long.compareUnsigned(sum, a) < 0;
-        return new AddResult(sum, overflow);
-    }
-
-    // Helper class to hold an addition result.
-    private static class AddResult {
-        long sum;
-        boolean overflow;
-
-        AddResult(long sum, boolean overflow) {
-            this.sum = sum;
-            this.overflow = overflow;
-        }
     }
 }

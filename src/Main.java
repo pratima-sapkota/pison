@@ -65,18 +65,18 @@ public class Main {
         System.out.println("Record length: " + record.recLength);
 
         // Load the file as a set of records
-        System.out.println("\nLoading as a record set from: " + filePath);
-        RecordSet recordSet = RecordLoader.loadRecordSet(filePath);        
-        if (recordSet == null) {
-            System.out.println("Record loading fails.");
-            System.exit(-1);
-        }
-        System.out.println("Total records: " + recordSet.numRecs);
+        // System.out.println("\nLoading as a record set from: " + filePath);
+        // RecordSet recordSet = RecordLoader.loadRecordSet(filePath);        
+        // if (recordSet == null) {
+        //     System.out.println("Record loading fails.");
+        //     System.exit(-1);
+        // }
+        // System.out.println("Total records: " + recordSet.numRecs);
 
         // Construct bitmap and create an iterator to query the record
         Bitmap bm = BitmapConstructor.construct(record, threadNum, levelNum);
         BitmapIterator iter = BitmapConstructor.getIterator(bm);
-        System.out.println("Bitmap iter: " + iter.getType() + " bytes");
+        System.out.println("Bitmap iter type: " + ((iter.getType() == Bitmap.PARALLEL) ? "PARALLEL" : "SEQUENTIAL"));
         String output = query(iter);
 
         System.out.println("matches are: " + output);

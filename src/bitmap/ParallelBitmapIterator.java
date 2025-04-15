@@ -476,7 +476,4 @@ public class ParallelBitmapIterator extends BitmapIterator {
             start_idx = end_idx = cur_idx = 0;
         }
     }
-
-    // Assume ParallelBitmap, Bitmap, and BitmapIterator are defined elsewhere with
-    // appropriate access methods such as getRecord(), getDepth(), getThreadNum(), and getBitmaps().
 }
