@@ -129,8 +129,28 @@ public class LocalBitmap extends Bitmap {
         return mEndInStrBitmap;
     }
 
-     public int getFinalLevSize() {
+    public int getFinalLevSize() {
         return mFinalLevColonBitmap.length;
+    }
+
+    public long getStartWordId() {
+        return mStartWordId;
+    }
+
+    public long getEndWordId() {
+        return mEndWordId;
+    }
+
+    public long[] getQuoteBitmap() {
+        return mQuoteBitmap;
+    }
+
+    public long[][] getFinalLevColonBitmap() {
+        return mFinalLevColonBitmap;
+    }
+
+    public long[][] getFinalLevCommaBitmap() {
+        return mFinalLevCommaBitmap;
     }
 
     // Setter methods

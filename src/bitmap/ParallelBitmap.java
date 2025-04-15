@@ -63,6 +63,26 @@ public class ParallelBitmap extends Bitmap {
         return mParallelMode;
     }
 
+    public long getRecordLength() {
+        return mRecordLength;
+    }
+
+    public int getThreadNum(){
+        return mThreadNum;
+    }
+
+    public int getDepth() {
+        return mDepth;
+    }
+
+    public String getRecord() {
+        return mRecord;
+    }
+
+    public LocalBitmap[] getBitmaps() {
+        return mBitmaps;
+    }
+
     public void setRecordLength(long length) {
         this.mRecordLength = length;
     }

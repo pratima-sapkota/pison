@@ -75,7 +75,8 @@ public class Main {
 
         // Construct bitmap and create an iterator to query the record
         Bitmap bm = BitmapConstructor.construct(record, threadNum, levelNum);
-        // BitmapIterator iter = BitmapConstructor.getIterator(bm);
+        BitmapIterator iter = BitmapConstructor.getIterator(bm);
+        System.out.println("Bitmap iter: " + iter.getType() + " bytes");
         // String output = query(iter);
 
         // System.out.println("matches are: " + output);

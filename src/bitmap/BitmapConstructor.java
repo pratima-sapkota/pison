@@ -19,16 +19,16 @@ public class BitmapConstructor {
         return bm;
     }
 
-    // public static BitmapIterator getIterator(Bitmap bm) {
-    //     BitmapIterator bi;
-    //     if (bm.type == Bitmap.SEQUENTIAL) {
-    //         bi = new SerialBitmapIterator((SerialBitmap) bm);
-    //         bi.type = Bitmap.SEQUENTIAL;
-    //     } else {
-    //         bi = new ParallelBitmapIterator((ParallelBitmap) bm);
-    //         bi.type = Bitmap.PARALLEL;
-    //     }
-    //     return bi;
-    // }
+    public static BitmapIterator getIterator(Bitmap bm) {
+        BitmapIterator bi;
+        // if (bm.type == Bitmap.SEQUENTIAL) {
+        //     bi = new SerialBitmapIterator((SerialBitmap) bm);
+        //     bi.type = Bitmap.SEQUENTIAL;
+        // } else {
+            bi = new ParallelBitmapIterator((ParallelBitmap) bm);
+            bi.setType(Bitmap.PARALLEL);
+        // }
+        return bi;
+    }
 }
 

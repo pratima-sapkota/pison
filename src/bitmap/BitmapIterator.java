@@ -51,6 +51,16 @@ public abstract class BitmapIterator {
     public abstract String getValue();
     
     // No destructor is necessary in Java.
+
+    // Getter methods
+    public int getType() {
+        return type;
+    }
+
+    // Setter methods
+    public void setType(int type) {
+        this.type = type;
+    }
 }
 
 // Simple data holding class translated from the C++ struct IterCtxInfo.
