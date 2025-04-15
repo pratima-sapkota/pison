@@ -24,7 +24,7 @@ public class SerialBitmapConstructor {
         }
 
         // Convert the selected text to a byte array (using UTF-8 encoding).
-        byte[] recordBytes = recordText.getBytes(StandardCharsets.UTF_8);
+        String recordBytes = recordText;
         
         // Create the SerialBitmap and perform index construction.
         SerialBitmap bitmap = new SerialBitmap(recordBytes, levelNum);

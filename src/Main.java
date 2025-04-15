@@ -7,22 +7,22 @@ import records.*;
 public class Main {
 
     // Equivalent to the C++ query function
-    // public static String query(BitmapIterator iter) {
-    //     StringBuilder output = new StringBuilder();
-    //     while (iter.isArray() && iter.moveNext()) {
-    //         if (!iter.down()) continue;
-    //         if (iter.isObject() && iter.moveToKey("user")) {
-    //             if (!iter.down()) continue;
-    //             if (iter.isObject() && iter.moveToKey("id")) {
-    //                 String value = iter.getValue();
-    //                 output.append(value).append(";");
-    //             }
-    //             iter.up();
-    //         }
-    //         iter.up();
-    //     }
-    //     return output.toString();
-    // }
+    public static String query(BitmapIterator iter) {
+        StringBuilder output = new StringBuilder();
+        while (iter.isArray() && iter.moveNext()) {
+            if (!iter.down()) continue;
+            if (iter.isObject() && iter.moveToKey("user")) {
+                if (!iter.down()) continue;
+                if (iter.isObject() && iter.moveToKey("id")) {
+                    String value = iter.getValue();
+                    output.append(value).append(";");
+                }
+                iter.up();
+            }
+            iter.up();
+        }
+        return output.toString();
+    }
 
     private static Map<String, String> parseArgs(String[] args) {
         Map<String, String> argMap = new HashMap<>();
@@ -77,8 +77,8 @@ public class Main {
         Bitmap bm = BitmapConstructor.construct(record, threadNum, levelNum);
         BitmapIterator iter = BitmapConstructor.getIterator(bm);
         System.out.println("Bitmap iter: " + iter.getType() + " bytes");
-        // String output = query(iter);
+        String output = query(iter);
 
-        // System.out.println("matches are: " + output);
+        System.out.println("matches are: " + output);
     }
 }

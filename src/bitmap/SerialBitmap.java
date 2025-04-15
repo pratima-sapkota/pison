@@ -1,5 +1,6 @@
 package bitmap;
 
+import java.nio.charset.StandardCharsets;
 import tokenizer.*;
 
 public class SerialBitmap extends Bitmap {
@@ -7,7 +8,7 @@ public class SerialBitmap extends Bitmap {
     public static final int MAX_LEVEL = 64;
 
     // Members corresponding to the C++ class.
-    private byte[] mRecord;
+    private String mRecord;
     private long mRecordLength;
     private long mNumTmpWords;
     private long mNumWords;
@@ -23,7 +24,7 @@ public class SerialBitmap extends Bitmap {
     }
 
     // Constructor taking the record (as a byte array) and level number.
-    public SerialBitmap(byte[] record, int levelNum) {
+    public SerialBitmap(String record, int levelNum) {
         this.mRecord = record;
         this.mDepth = levelNum - 1;
         // mQuoteBitmap will be allocated in setRecordLength.
@@ -42,8 +43,28 @@ public class SerialBitmap extends Bitmap {
         return mRecordLength;
     }
 
+    public long getRecordLength() {
+        return mRecordLength;
+    }
+
     public long getSize() {
         return mNumWords * 8; // 8 bytes per long
+    }
+
+    public String getRecord() {
+        return mRecord;
+    }
+
+    public long getQuoteBitmap(int index) {
+        return mQuoteBitmap[index];
+    }
+
+    public long getLevCommaBitmap(int level, int index) {
+        return mLevCommaBitmap[level][index];
+    }
+
+    public long getLevColonBitmap(int level, int index) {
+        return mLevColonBitmap[level][index];
     }
 
     // Free memory by nulling references (GC will reclaim them).
@@ -70,10 +91,11 @@ public class SerialBitmap extends Bitmap {
 
     // Helper method to compute a 32-bit mask for a block of 32 bytes.
     // Each bit i is set if record[offset+i] equals the target.
-    private int computeMask(byte[] record, int offset, byte target) {
+    private int computeMask(String record, int offset, byte target) {
+        byte[] recordBytes = record.getBytes(StandardCharsets.UTF_8);
         int mask = 0;
-        for (int i = 0; i < 32 && (offset + i) < record.length; i++) {
-            if (record[offset + i] == target) {
+        for (int i = 0; i < 32 && (offset + i) < recordBytes.length; i++) {
+            if (recordBytes[offset + i] == target) {
                 mask |= (1 << i);
             }
         }
