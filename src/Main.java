@@ -57,7 +57,7 @@ public class Main {
 
         // Load the file as a single record
         System.out.println("\nLoading as a single record from: " + filePath);
-        Record record = RecordLoader.loadRecord(filePath);
+        records.Record record = RecordLoader.loadRecord(filePath);
         if (record == null) {
             System.out.println("Record loading fails.");
             System.exit(-1);

@@ -1,11 +1,20 @@
 package bitmap;
 
+import java.util.Arrays;
 import java.nio.charset.StandardCharsets;
 import tokenizer.*;
+import JsonSimd.*;
+
 
 public class SerialBitmap extends Bitmap {
     // Adjust MAX_LEVEL as needed.
     public static final int MAX_LEVEL = 64;
+
+        static { System.loadLibrary("jsonsimd"); }
+
+    // this must match your C++ signature (you’ll generate the header with javac -h)
+    private native long[] processChunk(byte[] in32);
+    private native long computeStrMask(long quoteBits, long prevInside);
 
     // Members corresponding to the C++ class.
     private String mRecord;
@@ -89,19 +98,6 @@ public class SerialBitmap extends Bitmap {
         }
     }
 
-    // Helper method to compute a 32-bit mask for a block of 32 bytes.
-    // Each bit i is set if record[offset+i] equals the target.
-    private int computeMask(String record, int offset, byte target) {
-        byte[] recordBytes = record.getBytes(StandardCharsets.UTF_8);
-        int mask = 0;
-        for (int i = 0; i < 32 && (offset + i) < recordBytes.length; i++) {
-            if (recordBytes[offset + i] == target) {
-                mask |= (1 << i);
-            }
-        }
-        return mask;
-    }
-
     // Helper method to compute a string mask via a simple prefix scan.
     // (This is only an approximation of the _mm_clmulepi64_si128 work in C++.)
     private long computeStringMask(long quoteBits, long prevInside) {
@@ -148,16 +144,17 @@ public class SerialBitmap extends Bitmap {
 
         int numTmp = (int) mNumTmpWords; // assume it fits in int
         for (int j = 0; j < numTmp; j++) {
-            int offset = j * 32;
-            // Step 1: Build structural character bitmasks for this 32-byte block.
-            long colonbit = ((long) computeMask(mRecord, offset, v_colon)) & 0xffffffffL;
-            long quotebit  = ((long) computeMask(mRecord, offset, v_quote)) & 0xffffffffL;
-            long escapebit = ((long) computeMask(mRecord, offset, v_escape)) & 0xffffffffL;
-            long lbracebit = ((long) computeMask(mRecord, offset, v_lbrace)) & 0xffffffffL;
-            long rbracebit = ((long) computeMask(mRecord, offset, v_rbrace)) & 0xffffffffL;
-            long commabit  = ((long) computeMask(mRecord, offset, v_comma)) & 0xffffffffL;
-            long lbracketbit = ((long) computeMask(mRecord, offset, v_lbracket)) & 0xffffffffL;
-            long rbracketbit = ((long) computeMask(mRecord, offset, v_rbracket)) & 0xffffffffL;
+            int off = j * 32;
+            byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+            long[] bits = processChunk(slice);
+            colonbit    = bits[0];
+            quotebit    = bits[1];
+            escapebit   = bits[2];
+            lbracebit   = bits[3];
+            rbracebit   = bits[4];
+            commabit    = bits[5];
+            lbracketbit = bits[6];
+            rbracketbit = bits[7];
 
             // Combine two 32-byte blocks into one 64-bit word.
             if (j % 2 == 0) {
@@ -202,9 +199,12 @@ public class SerialBitmap extends Bitmap {
             mQuoteBitmap[top_word] = quote_bits;
 
             // Step 3: Build string mask bitmaps (simulate carry-less multiplication via a prefix scan).
-            long str_mask = computeStringMask(quote_bits, prev_iter_inside_quote);
-            str_mask ^= prev_iter_inside_quote;
-            prev_iter_inside_quote = ((str_mask & (1L << 63)) != 0) ? 1L : 0L;
+           // call into your native computeStrMask, then xor in Java
+            long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+                        ^ prev_iter_inside_quote;
+
+            // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
+            prev_iter_inside_quote = str_mask >> 63;
 
             // Step 4: Update structural character bitmaps.
             long tmp = ~str_mask;

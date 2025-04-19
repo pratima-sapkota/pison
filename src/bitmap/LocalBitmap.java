@@ -8,6 +8,12 @@ import tokenizer.*;
 // import jdk.incubator.vector.VectorSpecies;
 
 public class LocalBitmap extends Bitmap {
+    static { System.loadLibrary("jsonsimd"); }
+
+    // this must match your C++ signature (you’ll generate the header with javac -h)
+    private native long[] processChunk(byte[] in32);
+    private native long computeStrMask(long quoteBits, long prevInside);
+
     // Constants
     private static final int MAX_LEVEL = 32;
     public static final int UNKNOWN = -2;
@@ -225,18 +231,19 @@ public class LocalBitmap extends Bitmap {
         // Process each 32-byte block (temporary word).
         for (int j = 0; j < mNumTmpWords; j++) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
-            int i = j * 32;
-            // Use Panama Vector API to load 32 bytes and compute movemask for each target.
-            colonbit    = movemaskVec(i, COLON);
-            quotebit    = movemaskVec(i, QUOTE);
-            escapebit   = movemaskVec(i, ESCAPE);
-            lbracebit   = movemaskVec(i, LBRACE);
-            rbracebit   = movemaskVec(i, RBRACE);
-            commabit    = movemaskVec(i, COMMA);
-            lbracketbit = movemaskVec(i, LBRACKET);
-            rbracketbit = movemaskVec(i, RBRACKET);
-            
-            if (j % 2 == 0) {
+            int off = j * 32;
+        byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+        long[] bits = processChunk(slice);
+        colonbit    = bits[0];
+        quotebit    = bits[1];
+        escapebit   = bits[2];
+        lbracebit   = bits[3];
+        rbracebit   = bits[4];
+        commabit    = bits[5];
+        lbracketbit = bits[6];
+        rbracketbit = bits[7];
+
+        if ((j & 1) == 0) {
                 // Save first half.
                 colonbit0 = colonbit;
                 quotebit0 = quotebit;
@@ -280,8 +287,13 @@ public class LocalBitmap extends Bitmap {
                 mQuoteBitmap[++top_word] = quote_bits;
                 
                 // Step 3: Compute string mask.
-                strMask = computeStringMask(quote_bits, prev_iter_inside_quote);
-                prev_iter_inside_quote = (strMask < 0) ? 0xffffffffffffffffL : 0L;
+               // call into your native computeStrMask, then xor in Java
+                long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+                            ^ prev_iter_inside_quote;
+
+                // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
+                prev_iter_inside_quote = str_mask >> 63;
+
                 
                 // Step 4: Exclude characters inside strings.
                 long tmp = ~strMask;
@@ -476,15 +488,18 @@ public class LocalBitmap extends Bitmap {
         
         for (int j = 0; j < mNumTmpWords; j++) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
-            int i = j * 32;
-            colonbit    = movemaskVec(i, COLON);
-            quotebit    = movemaskVec(i, QUOTE);
-            escapebit   = movemaskVec(i, ESCAPE);
-            lbracebit   = movemaskVec(i, LBRACE);
-            rbracebit   = movemaskVec(i, RBRACE);
-            commabit    = movemaskVec(i, COMMA);
-            lbracketbit = movemaskVec(i, LBRACKET);
-            rbracketbit = movemaskVec(i, RBRACKET);
+            int off = j * 32;
+            byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+            long[] bits = processChunk(slice);
+
+            colonbit    = bits[0];
+            quotebit    = bits[1];
+            escapebit   = bits[2];
+            lbracebit   = bits[3];
+            rbracebit   = bits[4];
+            commabit    = bits[5];
+            lbracketbit = bits[6];
+            rbracketbit = bits[7];
             
             if (j % 2 == 0) {
                 colonbit0 = colonbit;
@@ -533,9 +548,13 @@ public class LocalBitmap extends Bitmap {
                 long quote_bits = quotebit & ~odd_ends;
                 mQuoteBitmap[top_word] = quote_bits;
                 
-                strMask = computeStringMask(quote_bits, prev_iter_inside_quote);
-                mStrBitmap[top_word] = strMask;
-                prev_iter_inside_quote = (strMask < 0) ? 0xffffffffffffffffL : 0L;
+                // call into your native computeStrMask, then xor in Java
+                long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+                            ^ prev_iter_inside_quote;
+
+                // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
+                prev_iter_inside_quote = str_mask >> 63;
+
             }
         }
         mEndInStrBitmap = prev_iter_inside_quote;
@@ -691,19 +710,16 @@ public class LocalBitmap extends Bitmap {
         mEndLevel = cur_level;
     }
     
-    // --- Helper: movemaskVec using Panama Vector API ---
-    // Loads 32 bytes from mRecord starting at offset and returns a 32-bit mask as a long.
-  // Helper: movemaskVec implemented without vector API (plain loop).
-private long movemaskVec(int offset, byte target) {
-    long mask = 0L;
-    // Process 32 bytes starting at offset.
-    for (int i = 0; i < 32 && (offset + i) < mRecord.length; i++) {
-        if (mRecord[offset + i] == target) {
-            mask |= (1L << i);
-        }
-    }
-    return mask;
-}
+// private long movemaskVec(int offset, byte target) {
+//     long mask = 0L;
+//     // Process 32 bytes starting at offset.
+//     for (int i = 0; i < 32 && (offset + i) < mRecord.length; i++) {
+//         if (mRecord[offset + i] == target) {
+//             mask |= (1L << i);
+//         }
+//     }
+//     return mask;
+// }
 
     
     // --- Helper: addWithOverflow ---
