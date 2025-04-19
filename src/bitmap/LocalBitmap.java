@@ -2,10 +2,7 @@ package bitmap;
 
 import java.nio.charset.StandardCharsets;
 import tokenizer.*;
-// import jdk.incubator.vector.ByteVector;
-// import jdk.incubator.vector.VectorMask;
-// import jdk.incubator.vector.VectorOperators;
-// import jdk.incubator.vector.VectorSpecies;
+import java.util.Arrays;
 
 public class LocalBitmap extends Bitmap {
     static { System.loadLibrary("jsonsimd"); }
@@ -296,7 +293,7 @@ public class LocalBitmap extends Bitmap {
 
                 
                 // Step 4: Exclude characters inside strings.
-                long tmp = ~strMask;
+                long tmp = ~str_mask;
                 colonbit   &= tmp;
                 lbracebit  &= tmp;
                 rbracebit  &= tmp;

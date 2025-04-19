@@ -3,8 +3,6 @@ package bitmap;
 import java.util.Arrays;
 import java.nio.charset.StandardCharsets;
 import tokenizer.*;
-import JsonSimd.*;
-
 
 public class SerialBitmap extends Bitmap {
     // Adjust MAX_LEVEL as needed.
@@ -133,6 +131,10 @@ public class SerialBitmap extends Bitmap {
         long lbracebit0 = 0, rbracebit0 = 0, commabit0 = 0;
         long lbracketbit0 = 0, rbracketbit0 = 0;
 
+        long colonbit, quotebit, escapebit,
+             lbracebit, rbracebit, commabit,
+             lbracketbit, rbracketbit;
+
         // Context variables.
         int cur_level = -1;
         int max_positive_level = -1;
@@ -142,10 +144,11 @@ public class SerialBitmap extends Bitmap {
         final long even_bits = 0x5555555555555555L;
         final long odd_bits = ~even_bits;
 
+        byte[] recordBytes = mRecord.getBytes(StandardCharsets.UTF_8);
         int numTmp = (int) mNumTmpWords; // assume it fits in int
         for (int j = 0; j < numTmp; j++) {
             int off = j * 32;
-            byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+            byte[] slice = Arrays.copyOfRange(recordBytes, off, off + 32);
             long[] bits = processChunk(slice);
             colonbit    = bits[0];
             quotebit    = bits[1];

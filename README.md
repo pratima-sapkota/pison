@@ -41,6 +41,9 @@ This repository contains a Java implementation of the Pison, a scalable structur
     ```
    This command runs your project using the compiled classes in the `bin` folder.
 
+```bash
+java -Djava.library.path=. -cp bin Main dataset/twitter_sample_large_record.json --threads=16 --levels=3
+```
 ## Notes for Beginners
 
 - **Understanding the Folder Structure:**  
