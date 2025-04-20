@@ -20,7 +20,7 @@ public class RecordLoader {
             int remain = MAX_PAD - (size % MAX_PAD);
             StringBuilder sb = new StringBuilder(recordText);
             
-            for (int i = 0; i < remain; i++) {
+            for (int i = 0; i < remain; ++i) {
                 sb.append('d');
             }
 
@@ -50,7 +50,7 @@ public class RecordLoader {
                 StringBuilder paddedLine = new StringBuilder(line);
 
                 // Pad the line with 'd' characters to make it a multiple of MAX_PAD
-                for (int i = 0; i < remain; i++) {
+                for (int i = 0; i < remain; ++i) {
                     paddedLine.append('d');
                 }
 
@@ -63,7 +63,7 @@ public class RecordLoader {
                     record.recLength = padded.length();
                     startPos += padded.length();
                     rs.recs.add(record);
-                    rs.numRecs++;
+                    ++rs.numRecs;
                 }
             }
         } catch (IOException e) {
@@ -71,7 +71,7 @@ public class RecordLoader {
         }
 
         String concatenated = fullText.toString();
-        for (int i = 0; i < rs.recs.size(); i++) {
+        for (int i = 0; i < rs.recs.size(); ++i) {
             rs.recs.get(i).text = concatenated;
             if (i < rs.recs.size() - 1) {
                 rs.recs.get(i).canDeleteText = false;

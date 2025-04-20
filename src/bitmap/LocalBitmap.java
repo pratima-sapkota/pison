@@ -62,7 +62,7 @@ public class LocalBitmap extends Bitmap {
         mRbraceBitmap = null;
         mLbracketBitmap = null;
         mRbracketBitmap = null;
-        for (int i = 0; i < MAX_LEVEL; i++) {
+        for (int i = 0; i < MAX_LEVEL; ++i) {
             mLevColonBitmap[i] = null;
             mLevCommaBitmap[i] = null;
             mNegLevColonBitmap[i] = null;
@@ -80,7 +80,7 @@ public class LocalBitmap extends Bitmap {
     
     // Free allocated resources (here simply nulling references for GC).
     public void freeMemory() {
-        for (int i = 0; i < MAX_LEVEL; i++) {
+        for (int i = 0; i < MAX_LEVEL; ++i) {
             mLevColonBitmap[i] = null;
             mLevCommaBitmap[i] = null;
             mNegLevColonBitmap[i] = null;
@@ -126,7 +126,7 @@ public class LocalBitmap extends Bitmap {
     
     public void copyLevBitmapsToFinal(int level, int idx) {
         if (level < 0 || level >= mFinalLevColonBitmap.length) {
-            System.err.println("copyLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
+            // System.err.println("copyLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
             return;
         }
         mFinalLevColonBitmap[level] = mLevColonBitmap[idx];
@@ -135,7 +135,7 @@ public class LocalBitmap extends Bitmap {
     
     public void copyNegLevBitmapsToFinal(int level, int idx) {
         if (level < 0 || level >= mFinalLevColonBitmap.length) {
-            System.err.println("copyNegLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
+            // System.err.println("copyNegLevBitmapsToFinal: level " + level + " is out-of-bounds. Skipping.");
             return;
         }
         mFinalLevColonBitmap[level] = mNegLevColonBitmap[idx];
@@ -162,8 +162,8 @@ public class LocalBitmap extends Bitmap {
         int[] startStates = { Tokenizer.OUT, Tokenizer.IN };
         boolean getStartState = false;
         int startState = Tokenizer.OUT;
-        for (int j = 0; j < 2; j++) {
-            mNumTrial++;
+        for (int j = 0; j < 2; ++j) {
+            ++mNumTrial;
             int state = startStates[j];
             tkn.createIterator(new String(mRecord, StandardCharsets.UTF_8), state);
             while (true) {
@@ -171,7 +171,7 @@ public class LocalBitmap extends Bitmap {
                 if (tknStatus == Tokenizer.END)
                     break;
                 if (tknStatus == Tokenizer.ERROR) {
-                    mNumTknErr++;
+                    ++mNumTknErr;
                     startState = tkn.oppositeState(state);
                     getStartState = true;
                     break;
@@ -189,6 +189,20 @@ public class LocalBitmap extends Bitmap {
         System.out.println("inference result num of trails: " + mNumTrial + " num of token error " + mNumTknErr);
         System.out.println("inference result " + startState + " " + getStartState);
         return getStartState ? startState : UNKNOWN;
+    }
+
+    private void ensureNegLevColonCapacity(int idx) {
+        if (idx >= mNegLevColonBitmap.length) {
+            int newSize = Math.max(idx + 1, mNegLevColonBitmap.length * 2);
+            mNegLevColonBitmap = Arrays.copyOf(mNegLevColonBitmap, newSize);
+        }
+    }
+
+    private void ensureNegLevCommaCapacity(int idx) {
+        if (idx >= mNegLevCommaBitmap.length) {
+            int newSize = Math.max(idx + 1, mNegLevCommaBitmap.length * 2);
+            mNegLevCommaBitmap = Arrays.copyOf(mNegLevCommaBitmap, newSize);
+        }
     }
     
     // --- Non-Speculative Index Construction ---
@@ -220,7 +234,7 @@ public class LocalBitmap extends Bitmap {
         final long odd_bits = ~even_bits;
         
         // Process each 32-byte block (temporary word).
-        for (int j = 0; j < mNumTmpWords; j++) {
+        for (int j = 0; j < mNumTmpWords; ++j) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
         byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
@@ -234,7 +248,7 @@ public class LocalBitmap extends Bitmap {
         lbracketbit = bits[6];
         rbracketbit = bits[7];
 
-        if ((j & 1) == 0) {
+        if ((j % 2) == 0) {
                 // Save first half.
                 colonbit0 = colonbit;
                 quotebit0 = quotebit;
@@ -255,7 +269,6 @@ public class LocalBitmap extends Bitmap {
                 commabit    = (commabit << 32) | commabit0;
                 lbracketbit = (lbracketbit << 32) | lbracketbit0;
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
-                top_word++;
                 
                 // Step 2: Update structural quote bitmap.
                 long bs_bits = escapebit;
@@ -317,6 +330,9 @@ public class LocalBitmap extends Bitmap {
                         }
                     } else if (cur_level < 0) {
                         int idx = -cur_level;
+                        ensureNegLevColonCapacity(idx);
+                        ensureNegLevCommaCapacity(idx);
+
                         if (mNegLevColonBitmap[idx] == null) {
                             mNegLevColonBitmap[idx] = new long[mNumWords];
                             if (cur_level < mMinNegativeLevel)
@@ -369,6 +385,9 @@ public class LocalBitmap extends Bitmap {
                             }
                         } else if (cur_level < 0) {
                             int idx = -cur_level;
+                            ensureNegLevColonCapacity(idx);
+                            ensureNegLevCommaCapacity(idx);
+
                             if (mNegLevColonBitmap[idx] == null) {
                                 mNegLevColonBitmap[idx] = new long[mNumWords];
                             }
@@ -408,7 +427,7 @@ public class LocalBitmap extends Bitmap {
                             if (cb_bit == lb_bit) {
                                 lb_mask &= (lb_mask - 1);
                                 lb_bit = lb_mask & -lb_mask;
-                                cur_level++;
+                                ++cur_level;
                                 if (mThreadId == 0 && cur_level == 0) {
                                     if (mLevCommaBitmap[cur_level] == null) {
                                         mLevCommaBitmap[cur_level] = new long[mNumWords];
@@ -418,7 +437,7 @@ public class LocalBitmap extends Bitmap {
                             } else if (cb_bit == rb_bit) {
                                 rb_mask &= (rb_mask - 1);
                                 rb_bit = rb_mask & -rb_mask;
-                                cur_level--;
+                                --cur_level;
                             }
                             first = second;
                             cb_mask &= (cb_mask - 1);
@@ -477,7 +496,7 @@ public class LocalBitmap extends Bitmap {
         final long even_bits = 0x5555555555555555L;
         final long odd_bits = ~even_bits;
         
-        for (int j = 0; j < mNumTmpWords; j++) {
+        for (int j = 0; j < mNumTmpWords; ++j) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
             byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
@@ -511,9 +530,8 @@ public class LocalBitmap extends Bitmap {
                 commabit    = (commabit << 32) | commabit0;
                 lbracketbit = (lbracketbit << 32) | lbracketbit0;
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
-                top_word++;
                 
-                mColonBitmap[top_word]    = colonbit;
+                mColonBitmap[++top_word]    = colonbit;
                 mCommaBitmap[top_word]    = commabit;
                 mLbraceBitmap[top_word]   = lbracebit;
                 mRbraceBitmap[top_word]   = rbracebit;
@@ -561,7 +579,7 @@ public class LocalBitmap extends Bitmap {
         long first, second;
         int cur_level = -1;
         
-        for (int j = 0; j < mNumWords; j++) {
+        for (int j = 0; j < mNumWords; ++j) {
             colonbit    = mColonBitmap[j];
             commabit    = mCommaBitmap[j];
             lbracebit   = mLbraceBitmap[j];
@@ -596,6 +614,9 @@ public class LocalBitmap extends Bitmap {
                         mLevCommaBitmap[cur_level][top_word] = commabit;
                 } else if (cur_level < 0) {
                     int idx = -cur_level;
+                    ensureNegLevColonCapacity(idx);
+                    ensureNegLevCommaCapacity(idx);
+
                     if (mNegLevColonBitmap[idx] == null)
                         mNegLevColonBitmap[idx] = new long[mNumWords];
                     if (mNegLevCommaBitmap[idx] == null)
@@ -639,6 +660,9 @@ public class LocalBitmap extends Bitmap {
                         }
                     } else if (cur_level < 0) {
                         int idx = -cur_level;
+                        ensureNegLevColonCapacity(idx);
+                        ensureNegLevCommaCapacity(idx);
+
                         if (mNegLevColonBitmap[idx] == null)
                             mNegLevColonBitmap[idx] = new long[mNumWords];
                         if (mNegLevCommaBitmap[idx] == null)
@@ -673,7 +697,7 @@ public class LocalBitmap extends Bitmap {
                         if (cb_bit == lb_bit) {
                             lb_mask &= (lb_mask - 1);
                             lb_bit = lb_mask & -lb_mask;
-                            cur_level++;
+                            ++cur_level;
                             if (mThreadId == 0 && cur_level == 0) {
                                 if (mLevCommaBitmap[cur_level] == null)
                                     mLevCommaBitmap[cur_level] = new long[mNumWords];
@@ -704,7 +728,7 @@ public class LocalBitmap extends Bitmap {
 // private long movemaskVec(int offset, byte target) {
 //     long mask = 0L;
 //     // Process 32 bytes starting at offset.
-//     for (int i = 0; i < 32 && (offset + i) < mRecord.length; i++) {
+//     for (int i = 0; i < 32 && (offset + i) < mRecord.length; ++i) {
 //         if (mRecord[offset + i] == target) {
 //             mask |= (1L << i);
 //         }
@@ -735,7 +759,7 @@ public class LocalBitmap extends Bitmap {
     private long computeStringMask(long quoteBits, long prevInside) {
         long mask = 0L;
         boolean inQuote = (prevInside != 0);
-        for (int bit = 0; bit < 64; bit++) {
+        for (int bit = 0; bit < 64; ++bit) {
             if (((quoteBits >> bit) & 1L) != 0) {
                 inQuote = !inQuote;
             }

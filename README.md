@@ -26,11 +26,11 @@ This repository contains a Java implementation of the Pison, a scalable structur
    Since `Main.java` is in the default package, run:
    - For **Serial** records:
     ```bash
-    java -Djava.library.path=. -cp bin Main dataset/twitter_sample_large_record.json --threads=16 --levels=3
+    java -Djava.library.path=. -cp bin Main dataset/twitter_sample_large_record.json --threads=1 --levels=3
     ```
     or
     ```bash
-    java -Djava.library.path=. -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=16 --levels=3
+    java -Djava.library.path=. -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=1 --levels=3
     ```
    - For **Parallel** records:
     ```bash

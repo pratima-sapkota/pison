@@ -21,7 +21,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     public SerialBitmapIterator() {
         mCtxInfo = new IterCtxInfo[MAX_LEVEL];
         mPosArrAlloc = new boolean[MAX_LEVEL];
-        for (int i = 0; i < MAX_LEVEL; i++) {
+        for (int i = 0; i < MAX_LEVEL; ++i) {
             mCtxInfo[i] = new IterCtxInfo();
             mPosArrAlloc[i] = false;
         }
@@ -67,7 +67,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     public boolean down() {
         // Validate current level against the SerialBitmap depth.
         if (mCurLevel < mTopLevel || mCurLevel > mSerialBitmap.getDepth()) return false;
-        mCurLevel++;
+        ++mCurLevel;
         long startPos, endPos;
 
         if (mCurLevel == mTopLevel + 1) {
@@ -107,7 +107,7 @@ public class SerialBitmapIterator extends BitmapIterator {
 
         // Skip whitespace to find the next non-space character.
         int i = (int) startPos;
-        if (startPos > 0 || mCurLevel > 0) i++;
+        if (startPos > 0 || mCurLevel > 0) ++i;
         char ch = mSerialBitmap.getRecord().charAt(i);
         while (i < endPos && (ch == ' ' || ch == '\n')) {
             ch = mSerialBitmap.getRecord().charAt(++i);
@@ -157,7 +157,7 @@ public class SerialBitmapIterator extends BitmapIterator {
             long colonPos = mCtxInfo[mCurLevel].positions[(int) curIdx];
             FieldQuotePos pos = findFieldQuotePos(colonPos);
             if (pos == null) return false;
-            mVisitedFields++;
+            ++mVisitedFields;
             int keySize = (int) (pos.end - pos.start - 1);
             if (keySize == key.length()) {
                 String extracted = mSerialBitmap.getRecord().substring((int) pos.start + 1, (int) pos.end);
@@ -166,7 +166,7 @@ public class SerialBitmapIterator extends BitmapIterator {
                     return true;
                 }
             }
-            curIdx++;
+            ++curIdx;
         }
         mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
         return false;
@@ -183,7 +183,7 @@ public class SerialBitmapIterator extends BitmapIterator {
             long colonPos = mCtxInfo[mCurLevel].positions[(int) curIdx];
             FieldQuotePos pos = findFieldQuotePos(colonPos);
             if (pos == null) return null;
-            mVisitedFields++;
+            ++mVisitedFields;
             boolean hasKey = false;
             String keyFound = null;
             for (String key : keySet) {
@@ -200,7 +200,7 @@ public class SerialBitmapIterator extends BitmapIterator {
                     }
                 }
             }
-            curIdx++;
+            ++curIdx;
         }
         mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
         return null;
@@ -252,13 +252,13 @@ public class SerialBitmapIterator extends BitmapIterator {
         long st = startPos / 64;
         long ed = (long) Math.ceil((double) endPos / 64);
         ctx.end_idx = -1;
-        for (long i = st; i < ed; i++) {
+        for (long i = st; i < ed; ++i) {
             // Retrieve the i-th element in the level’s colon bitmap.
             long colonBit = mSerialBitmap.getLevColonBitmap(level, (int)i);
             while (colonBit != 0) {
                 long offset = i * 64 + Long.numberOfTrailingZeros(colonBit);
                 if (startPos <= offset && offset <= endPos) {
-                    ctx.end_idx++;
+                    ++ctx.end_idx;
                     // (Assumes positions array is large enough.)
                     ctx.positions[(int) ctx.end_idx] = offset;
                 }
@@ -272,12 +272,12 @@ public class SerialBitmapIterator extends BitmapIterator {
         long st = startPos / 64;
         long ed = (long) Math.ceil((double) endPos / 64);
         ctx.end_idx = -1;
-        for (long i = st; i < ed; i++) {
+        for (long i = st; i < ed; ++i) {
             long commaBit = mSerialBitmap.getLevCommaBitmap(level, (int)i);
             while (commaBit != 0) {
                 long offset = i * 64 + Long.numberOfTrailingZeros(commaBit);
                 if (startPos <= offset && offset <= endPos) {
-                    ctx.end_idx++;
+                    ++ctx.end_idx;
                     ctx.positions[(int) ctx.end_idx] = offset;
                 }
                 commaBit &= (commaBit - 1);

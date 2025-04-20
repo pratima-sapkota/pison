@@ -32,11 +32,11 @@ public class ParallelBitmapIterator extends BitmapIterator {
         mCurChunkId = 0;
         mFindDomArray = false;
         mCopiedIterator = false;
-        for (int i = 0; i < MAX_LEVEL; i++) {
+        for (int i = 0; i < MAX_LEVEL; ++i) {
             mPosArrAlloc[i] = false;
             mCtxInfo[i] = new IterCtxInfo();
         }
-        for (int i = 0; i < MAX_THREAD; i++) {
+        for (int i = 0; i < MAX_THREAD; ++i) {
             pbMetadata[i] = new ParallelBitmapMetadata();
             commaPosInfo[i] = new CommaPosInfo();
         }
@@ -60,7 +60,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
             copy.mCtxInfo[mCurLevel].end_idx = this.mCtxInfo[mCurLevel].end_idx;
             copy.mCtxInfo[mCurLevel].cur_idx = -1;
             copy.mPosArrAlloc[mCurLevel] = this.mPosArrAlloc[mCurLevel];
-            for (int i = mCurLevel + 1; i < MAX_LEVEL; i++) {
+            for (int i = mCurLevel + 1; i < MAX_LEVEL; ++i) {
                 copy.mPosArrAlloc[i] = false;
             }
         }
@@ -79,7 +79,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     public boolean down() {
         if (mCurLevel < mTopLevel || mCurLevel > mParallelBitmap.getDepth())
             return false;
-        mCurLevel++;
+        ++mCurLevel;
         long startPos, endPos;
         int threadNum = mParallelBitmap.getThreadNum();
 
@@ -115,7 +115,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
 
         // Skip white spaces.
         int i = (int) startPos;
-        if (startPos > 0 || mCurLevel > 0) i++;
+        if (startPos > 0 || mCurLevel > 0) ++i;
         char ch = mParallelBitmap.getRecord().charAt(i);
         while (i < endPos && (ch == ' ' || ch == '\n')) {
             ch = mParallelBitmap.getRecord().charAt(++i);
@@ -186,7 +186,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                     return true;
                 }
             }
-            curIdx++;
+            ++curIdx;
         }
         return false;
     }
@@ -207,7 +207,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 keySet.remove(foundKey);
                 return foundKey;
             }
-            curIdx++;
+            ++curIdx;
         }
         mCtxInfo[mCurLevel].cur_idx = curIdx;
         return null;
@@ -256,7 +256,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     // Saves metadata from the linked bitmap chunks.
     private void gatherParallelBitmapInfo() {
         int chunkNum = mParallelBitmap.getThreadNum();
-        for (int chunkId = 0; chunkId < chunkNum; chunkId++) {
+        for (int chunkId = 0; chunkId < chunkNum; ++chunkId) {
             LocalBitmap bitmap = mParallelBitmap.getBitmaps()[chunkId];
             pbMetadata[chunkId].startWordId = (int) bitmap.getStartWordId();
             pbMetadata[chunkId].endWordId = (int) bitmap.getEndWordId();
@@ -270,7 +270,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     private void generateColonPositions(long startPos, long endPos, int level, long[] colonPositions) {
         int startChunk = -1, endChunk = -1;
         int threadNum = mParallelBitmap.getThreadNum();
-        for (int i = mCurChunkId; i < threadNum; i++) {
+        for (int i = mCurChunkId; i < threadNum; ++i) {
             if (pbMetadata[i].startWordId <= startPos / 64)
                 startChunk = i;
             if (pbMetadata[i].endWordId >= Math.ceil((double) endPos / 64) && endChunk == -1)
@@ -279,7 +279,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         }
         if (startChunk == 0 && endChunk == -1) endChunk = 0;
         mCurChunkId = startChunk;
-        for (int curChunk = startChunk; curChunk <= endChunk; curChunk++) {
+        for (int curChunk = startChunk; curChunk <= endChunk; ++curChunk) {
             long[] levels = pbMetadata[curChunk].levColonBitmap[level];
             if (levels == null)
                 continue;
@@ -287,7 +287,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
             long curEndPos = pbMetadata[curChunk].endWordId;
             long st = Math.max(curStartPos, startPos / 64);
             long ed = Math.min(curEndPos, (long) Math.ceil((double) endPos / 64));
-            for (long i = st; i < ed; i++) {
+            for (long i = st; i < ed; ++i) {
                 int idx = (curChunk >= 1) ? (int) (i - curStartPos) : (int) i;
                 long colonBit = levels[idx];
                 while (colonBit != 0) {
@@ -304,7 +304,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     private void generateCommaPositions(long startPos, long endPos, int level, long[] commaPositions) {
         int startChunk = -1, endChunk = -1;
         int chunkNum = mParallelBitmap.getThreadNum();
-        for (int i = mCurChunkId; i < chunkNum; i++) {
+        for (int i = mCurChunkId; i < chunkNum; ++i) {
             if (pbMetadata[i].startWordId <= startPos / 64)
                 startChunk = i;
             if (pbMetadata[i].endWordId >= Math.ceil((double) endPos / 64) && endChunk == -1)
@@ -313,7 +313,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         }
         if (startChunk == 0 && endChunk == -1) endChunk = 0;
         mCurChunkId = startChunk;
-        for (int curChunk = startChunk; curChunk <= endChunk; curChunk++) {
+        for (int curChunk = startChunk; curChunk <= endChunk; ++curChunk) {
             long[] levels = pbMetadata[curChunk].levCommaBitmap[level];
             if (levels == null)
                 continue;
@@ -321,7 +321,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
             long curEndPos = pbMetadata[curChunk].endWordId;
             long st = Math.max(curStartPos, startPos / 64);
             long ed = Math.min(curEndPos, (long) Math.ceil((double) endPos / 64));
-            for (long i = st; i < ed; i++) {
+            for (long i = st; i < ed; ++i) {
                 int idx = (curChunk >= 1) ? (int) (i - curStartPos) : (int) i;
                 long commaBit = levels[idx];
                 while (commaBit != 0) {
@@ -338,7 +338,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     private void generateCommaPositionsParallel(long startPos, long endPos, int level, long[] commaPositions) {
         int startChunk = -1, endChunk = -1;
         int chunkNum = mParallelBitmap.getThreadNum();
-        for (int i = mCurChunkId; i < chunkNum; i++) {
+        for (int i = mCurChunkId; i < chunkNum; ++i) {
             if (pbMetadata[i].startWordId <= startPos / 64)
                 startChunk = i;
             if (pbMetadata[i].endWordId >= Math.ceil((double) endPos / 64) && endChunk == -1)
@@ -348,7 +348,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (startChunk == 0 && endChunk == -1) endChunk = 0;
         mCurChunkId = startChunk;
         Thread[] threads = new Thread[MAX_THREAD];
-        for (int i = startChunk; i <= endChunk; i++) {
+        for (int i = startChunk; i <= endChunk; ++i) {
             final int tid = i;
             commaPosInfo[tid].threadId = tid;
             commaPosInfo[tid].level = level;
@@ -364,7 +364,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 long curEndPos = pbMetadata[tid].endWordId;
                 long st = Math.max(curStartPos, startPos / 64);
                 long ed = Math.min(curEndPos, (long) Math.ceil((double) endPos / 64));
-                for (long j = st; j < ed; j++) {
+                for (long j = st; j < ed; ++j) {
                     int idx = (tid >= 1) ? (int) (j - curStartPos) : (int) j;
                     long commaBit = levels[idx];
                     while (commaBit != 0) {
@@ -377,13 +377,13 @@ public class ParallelBitmapIterator extends BitmapIterator {
             });
             threads[tid].start();
         }
-        for (int i = startChunk; i <= endChunk; i++) {
+        for (int i = startChunk; i <= endChunk; ++i) {
             try {
                 threads[i].join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            for (int j = 0; j <= commaPosInfo[i].topCommaPositions; j++) {
+            for (int j = 0; j <= commaPosInfo[i].topCommaPositions; ++j) {
                 commaPositions[++mCtxInfo[level].end_idx] = commaPosInfo[i].commaPositions[j];
             }
         }
@@ -395,7 +395,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         long startQuote = 0, endQuote = 0;
         int curChunk = -1;
         int chunkNum = mParallelBitmap.getThreadNum();
-        for (int i = mCurChunkId; i < chunkNum; i++) {
+        for (int i = mCurChunkId; i < chunkNum; ++i) {
             if (wId >= pbMetadata[i].startWordId && wId < pbMetadata[i].endWordId) {
                 curChunk = i;
                 break;

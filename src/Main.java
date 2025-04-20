@@ -62,7 +62,7 @@ public class Main {
             System.out.println("Record loading fails.");
             System.exit(-1);
         }
-        System.out.println("Record length: " + record.recLength);
+        // System.out.println(record.text + ' ' + record.recStartPos + ' ' + record.recLength);
 
         // Load the file as a set of records
         // System.out.println("\nLoading as a record set from: " + filePath);

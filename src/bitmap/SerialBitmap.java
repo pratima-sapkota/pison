@@ -30,7 +30,7 @@ public class SerialBitmap extends Bitmap {
         this.mDepth = levelNum - 1;
         // mQuoteBitmap will be allocated in setRecordLength.
         this.mQuoteBitmap = null;
-        for (int i = 0; i <= this.mDepth; i++) {
+        for (int i = 0; i <= this.mDepth; ++i) {
             mLevColonBitmap[i] = null;
             mLevCommaBitmap[i] = null;
         }
@@ -70,7 +70,7 @@ public class SerialBitmap extends Bitmap {
 
     // Free memory by nulling references (GC will reclaim them).
     private void freeMemory() {
-        for (int m = 0; m <= mDepth; m++) {
+        for (int m = 0; m <= mDepth; ++m) {
             mLevColonBitmap[m] = null;
             mLevCommaBitmap[m] = null;
         }
@@ -96,7 +96,7 @@ public class SerialBitmap extends Bitmap {
         long mask = 0;
         long inside = prevInside; // 0 or 1 to indicate whether we are inside quotes
         // Process 64 bits.
-        for (int bit = 0; bit < 64; bit++) {
+        for (int bit = 0; bit < 64; ++bit) {
             if (((quoteBits >> bit) & 1L) != 0) {
                 inside ^= 1; // flip the inside flag for each quote
             }
@@ -140,7 +140,7 @@ public class SerialBitmap extends Bitmap {
 
         byte[] recordBytes = mRecord.getBytes(StandardCharsets.UTF_8);
         int numTmp = (int) mNumTmpWords; // assume it fits in int
-        for (int j = 0; j < numTmp; j++) {
+        for (int j = 0; j < numTmp; ++j) {
             int off = j * 32;
             byte[] slice = Arrays.copyOfRange(recordBytes, off, off + 32);
             long[] bits = JsonSimd.processChunk(slice);
@@ -192,7 +192,7 @@ public class SerialBitmap extends Bitmap {
             long odd_start_even_end = odd_carry_ends & even_bits;
             long odd_ends = even_start_odd_end | odd_start_even_end;
             long quote_bits = quotebit & ~odd_ends;
-            top_word++;
+            ++top_word;
             mQuoteBitmap[top_word] = quote_bits;
 
             // Step 3: Build string mask bitmaps (simulate carry-less multiplication via a prefix scan).
@@ -281,7 +281,7 @@ public class SerialBitmap extends Bitmap {
                         if (cb_bit == lb_bit) {
                             lb_mask = lb_mask & (lb_mask - 1);
                             lb_bit = lb_mask & -lb_mask;
-                            cur_level++;
+                            ++cur_level;
                             if (cur_level == 0) {
                                 if (mLevCommaBitmap[cur_level] == null) {
                                     mLevCommaBitmap[cur_level] = new long[(int) mNumWords];

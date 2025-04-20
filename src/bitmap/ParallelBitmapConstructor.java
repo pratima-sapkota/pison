@@ -16,7 +16,7 @@ public class ParallelBitmapConstructor {
         String recordText = record.getText();
         if (record.getRecStartPos() > 0)
             recordText = recordText.substring(record.getRecStartPos());
-
+        System.out.println("Record text: " + recordText);
         long length = (record.getRecLength() > 0) ? record.getRecLength() : recordText.length();
 
         parallelBitmap = new ParallelBitmap(recordText, length, threadNum, levelNum);
@@ -26,12 +26,16 @@ public class ParallelBitmapConstructor {
         int mode = parallelBitmap.parallelMode();
         try {
             if (mode == ParallelBitmap.NONSPECULATIVE) {
-                List<Future<?>> futures = new ArrayList<>();
-                for (int i = 0; i < threadNum; i++) {
+                List<Future<?>> futures = new ArrayList<>(threadNum);
+                for (int i = 0; i < threadNum; ++i) {
                     final int threadId = i;
-                    futures.add(executor.submit(() -> {
-                        parallelBitmap.getBitmap(threadId).nonSpecIndexConstruction();
-                    }));
+                    executor.submit(() -> {
+                    try {
+                            nonSpecIndexConstruction(threadId);
+                        } catch (Throwable t) {
+                            t.printStackTrace();
+                        }}
+                    );
                 }
                 try {
                     for (Future<?> future : futures) {
@@ -41,9 +45,15 @@ public class ParallelBitmapConstructor {
                     e.printStackTrace();
                 }
             } else {
-                for (int i = 0; i < threadNum; i++) {
+                for (int i = 0; i < threadNum; ++i) {
                     final int threadId = i;
-                    executor.submit(() -> parallelBitmap.getBitmap(threadId).buildStringMaskBitmap());
+                    executor.submit(() -> {
+                        try {
+                            buildStringMaskBitmap(threadId);
+                        } catch (Throwable t) {
+                            t.printStackTrace();
+                        }}
+                    );
                 }
                 executor.shutdown();
                 executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
@@ -51,9 +61,15 @@ public class ParallelBitmapConstructor {
                 parallelBitmap.rectifyStringMaskBitmaps();
 
                 executor = Executors.newFixedThreadPool(threadNum); // restart executor
-                for (int i = 0; i < threadNum; i++) {
+                for (int i = 0; i < threadNum; ++i) {
                     final int threadId = i;
-                    executor.submit(() -> parallelBitmap.getBitmap(threadId).buildLeveledBitmap());
+                    executor.submit(() -> {
+                        try {
+                            buildLeveledBitmap(threadId);
+                        } catch (Throwable t) {
+                            t.printStackTrace();
+                        }
+                    });
                 }
             }
 
@@ -67,5 +83,38 @@ public class ParallelBitmapConstructor {
         }
 
         return parallelBitmap;
+    }
+
+    public static void nonSpecIndexConstruction(int threadId) {
+        System.out.printf("thread %d starts building structural indexes.%n", threadId);
+        long start = System.nanoTime();
+
+        // your core work
+        parallelBitmap.getBitmap(threadId)
+                       .nonSpecIndexConstruction();
+
+        long durationUs = (System.nanoTime() - start) / 1_000; 
+        System.out.printf("%dth thread finishes structural index construction (%.3f ms).%n", 
+                          threadId, durationUs/1000.0);
+    }
+
+    /** builds bitmap index in speculative mode (Step 1–3) */
+    public static void buildStringMaskBitmap(int threadId) {
+        System.out.printf("%dth thread starts building string mask bitmap.%n", threadId);
+
+        parallelBitmap.getBitmap(threadId)
+                       .buildStringMaskBitmap();
+
+        System.out.printf("%dth thread finishes building string mask bitmap.%n", threadId);
+    }
+
+    /** finish the last two steps to finish structural index construction */
+    public static void buildLeveledBitmap(int threadId) {
+        System.out.printf("%dth thread starts building leveled bitmap.%n", threadId);
+
+        parallelBitmap.getBitmap(threadId)
+                       .buildLeveledBitmap();
+
+        System.out.printf("%dth thread finishes building leveled bitmap.%n", threadId);
     }
 }
