@@ -5,12 +5,6 @@ import tokenizer.*;
 import java.util.Arrays;
 
 public class LocalBitmap extends Bitmap {
-    static { System.loadLibrary("jsonsimd"); }
-
-    // this must match your C++ signature (you’ll generate the header with javac -h)
-    private native long[] processChunk(byte[] in32);
-    private native long computeStrMask(long quoteBits, long prevInside);
-
     // Constants
     private static final int MAX_LEVEL = 32;
     public static final int UNKNOWN = -2;
@@ -230,7 +224,7 @@ public class LocalBitmap extends Bitmap {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
         byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
-        long[] bits = processChunk(slice);
+        long[] bits = JsonSimd.processChunk(slice);
         colonbit    = bits[0];
         quotebit    = bits[1];
         escapebit   = bits[2];
@@ -285,7 +279,7 @@ public class LocalBitmap extends Bitmap {
                 
                 // Step 3: Compute string mask.
                // call into your native computeStrMask, then xor in Java
-                long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+                long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
                             ^ prev_iter_inside_quote;
 
                 // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
@@ -487,7 +481,7 @@ public class LocalBitmap extends Bitmap {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
             byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
-            long[] bits = processChunk(slice);
+            long[] bits = JsonSimd.processChunk(slice);
 
             colonbit    = bits[0];
             quotebit    = bits[1];
@@ -546,7 +540,7 @@ public class LocalBitmap extends Bitmap {
                 mQuoteBitmap[top_word] = quote_bits;
                 
                 // call into your native computeStrMask, then xor in Java
-                long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+                long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
                             ^ prev_iter_inside_quote;
 
                 // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…

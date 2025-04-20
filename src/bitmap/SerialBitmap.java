@@ -8,12 +8,6 @@ public class SerialBitmap extends Bitmap {
     // Adjust MAX_LEVEL as needed.
     public static final int MAX_LEVEL = 64;
 
-        static { System.loadLibrary("jsonsimd"); }
-
-    // this must match your C++ signature (you’ll generate the header with javac -h)
-    private native long[] processChunk(byte[] in32);
-    private native long computeStrMask(long quoteBits, long prevInside);
-
     // Members corresponding to the C++ class.
     private String mRecord;
     private long mRecordLength;
@@ -149,7 +143,7 @@ public class SerialBitmap extends Bitmap {
         for (int j = 0; j < numTmp; j++) {
             int off = j * 32;
             byte[] slice = Arrays.copyOfRange(recordBytes, off, off + 32);
-            long[] bits = processChunk(slice);
+            long[] bits = JsonSimd.processChunk(slice);
             colonbit    = bits[0];
             quotebit    = bits[1];
             escapebit   = bits[2];
@@ -203,7 +197,7 @@ public class SerialBitmap extends Bitmap {
 
             // Step 3: Build string mask bitmaps (simulate carry-less multiplication via a prefix scan).
            // call into your native computeStrMask, then xor in Java
-            long str_mask = computeStrMask(quote_bits, prev_iter_inside_quote)
+            long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
                         ^ prev_iter_inside_quote;
 
             // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…

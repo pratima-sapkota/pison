@@ -1,6 +1,4 @@
-// JsonSimd.cpp
-
-#include "JsonSimd.h"
+#include "bitmap_JsonSimd.h"
 #include <immintrin.h>
 #include <stdint.h>
 
@@ -9,8 +7,8 @@
  * Method:    processChunk
  * Signature: ([B)[J
  */
-JNIEXPORT jlongArray JNICALL
-Java_JsonSimd_processChunk(JNIEnv* env, jobject /*self*/, jbyteArray inArr) {
+JNIEXPORT jlongArray JNICALL 
+Java_bitmap_JsonSimd_processChunk(JNIEnv* env, jclass cls, jbyteArray inArr) {
     // 1) Pull the 32‐byte chunk from Java
     jbyte* in = env->GetByteArrayElements(inArr, nullptr);
 
@@ -61,8 +59,8 @@ Java_JsonSimd_processChunk(JNIEnv* env, jobject /*self*/, jbyteArray inArr) {
  * Method:    computeStrMask
  * Signature: (JJ)J
  */
-JNIEXPORT jlong JNICALL
-Java_JsonSimd_computeStrMask(JNIEnv* env, jobject /*self*/,
+JNIEXPORT jlong JNICALL 
+Java_bitmap_JsonSimd_computeStrMask(JNIEnv* env, jclass cls /*self*/,
                              jlong quoteBits, jlong /*prevInside*/) {
     // 1) Build a 128-bit vector with quoteBits in the low lane
     __m128i v128 = _mm_set_epi64x(0ULL, (uint64_t)quoteBits);

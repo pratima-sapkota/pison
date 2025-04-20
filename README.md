@@ -17,7 +17,8 @@ This repository contains a Java implementation of the Pison, a scalable structur
 1. **Compile the Project:**  
    Open a terminal or command prompt at the project root and run:
    ```bash
-   javac -d bin src/bitmap/*.java src/records/*.java src/tests/*.java src/tokenizer/*.java src/*.java
+   g++ -fPIC -mavx2 -mpclmul -msse2 -shared     -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux     -o libjsonsimd.so    include/bitmap_JsonSimd.cpp
+   javac   -h include   -d bin   src/bitmap/*.java   src/records/*.java   src/tests/*.java   src/tokenizer/*.java   src/*.java
    ```
    This command compiles all the Java source files and places the resulting `.class` files in the `bin` directory.
 
@@ -25,19 +26,19 @@ This repository contains a Java implementation of the Pison, a scalable structur
    Since `Main.java` is in the default package, run:
    - For **Serial** records:
     ```bash
-    java -cp bin Main dataset/twitter_sample_large_record.json --threads=1 --levels=3
+    java -Djava.library.path=. -cp bin Main dataset/twitter_sample_large_record.json --threads=16 --levels=3
     ```
     or
     ```bash
-    java -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=1 --levels=3
+    java -Djava.library.path=. -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=16 --levels=3
     ```
    - For **Parallel** records:
     ```bash
-    java -cp bin Main dataset/twitter_sample_large_record.json --threads=16 --levels=3
+    java -Djava.library.path=. -cp bin Main dataset/twitter_sample_large_record.json --threads=16 --levels=3
     ```
     or
     ```bash
-    java -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=16 --levels=3
+    java -Djava.library.path=. -cp bin Main --file=dataset/twitter_sample_large_record.json --threads=16 --levels=3
     ```
    This command runs your project using the compiled classes in the `bin` folder.
 
