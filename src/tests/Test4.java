@@ -1,0 +1,88 @@
+import java.util.HashMap;
+import java.util.Map;
+
+import bitmap.*;
+import records.*;
+
+public class Main {
+
+    // Equivalent to the C++ query function
+    public static String query(BitmapIterator iter) {
+        StringBuilder output = new StringBuilder();
+        if (iter.isObject() && iter.moveToKey("categoryPath")) {
+            if (!iter.down()) return output.toString();  // enter "categoryPath"
+            if (iter.isArray()) {
+                for (int idx = 1; idx <= 2; idx++) {
+                    if (iter.moveToIndex(idx)) {
+                        if (!iter.down()) continue;
+                        if (iter.isObject() && iter.moveToKey("id")) {
+                            String value = iter.getValue();
+                            output.append(value).append(";");
+                        }
+                        iter.up();  // back out of element
+                    }
+                }
+            }
+            iter.up();  // back out of "categoryPath"
+        }
+        return output.toString();
+    }
+
+    private static Map<String, String> parseArgs(String[] args) {
+        Map<String, String> argMap = new HashMap<>();
+
+        for (String arg : args) {
+            if (arg.startsWith("--") && arg.contains("=")) {
+                String[] parts = arg.substring(2).split("=", 2);
+                if (parts.length == 2 && !parts[0].isEmpty()) {
+                    argMap.put(parts[0], parts[1]);
+                }
+            } else if (!argMap.containsKey("file")) {
+                // Allow first positional argument to be the file path
+                argMap.put("file", arg);
+            }
+        }
+        return argMap;
+    }
+
+    public static void main(String[] args) {
+        // Parse keyword arguments
+        Map<String, String> config = parseArgs(args);
+
+        String filePath = config.get("file");
+        int threadNum = Integer.parseInt(config.getOrDefault("threads", "16"));
+        int levelNum = Integer.parseInt(config.getOrDefault("levels", "3"));  
+        System.out.println("Thread number: " + threadNum);
+
+        if (filePath == null) {
+            System.out.println("Usage: java Main --file=path/to/file.json [--threads=N] [--levels=N]");
+            System.exit(-1);
+        }
+
+        // Load the file as a single record
+        System.out.println("\nLoading as a single record from: " + filePath);
+        records.Record record = RecordLoader.loadRecord(filePath);
+        if (record == null) {
+            System.out.println("Record loading fails.");
+            System.exit(-1);
+        }
+        // System.out.println(record.text + ' ' + record.recStartPos + ' ' + record.recLength);
+
+        // Load the file as a set of records
+        // System.out.println("\nLoading as a record set from: " + filePath);
+        // RecordSet recordSet = RecordLoader.loadRecordSet(filePath);        
+        // if (recordSet == null) {
+        //     System.out.println("Record loading fails.");
+        //     System.exit(-1);
+        // }
+        // System.out.println("Total records: " + recordSet.numRecs);
+
+        // Construct bitmap and create an iterator to query the record
+        Bitmap bm = BitmapConstructor.construct(record, 1, 3);
+        BitmapIterator iter = BitmapConstructor.getIterator(bm);
+        System.out.println("Bitmap iter type: " + ((iter.getType() == Bitmap.PARALLEL) ? "PARALLEL" : "SEQUENTIAL"));
+        String output = query(iter);
+
+        System.out.println("matches are: " + output);
+    }
+}

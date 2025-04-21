@@ -59,7 +59,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     // Moves back one level in the nested record.
     public boolean up() {
         if (mCurLevel == mTopLevel) return false;
-        mCurLevel--;
+        --mCurLevel;
         return true;
     }
 
@@ -68,8 +68,10 @@ public class SerialBitmapIterator extends BitmapIterator {
         // Validate current level against the SerialBitmap depth.
         if (mCurLevel < mTopLevel || mCurLevel > mSerialBitmap.getDepth()) return false;
         ++mCurLevel;
-        long startPos, endPos;
-
+        System.out.println("down function cur level "+ mCurLevel + " "+ mTopLevel + " "+ mSerialBitmap.getDepth());
+        long startPos = -1;
+        long endPos = -1;
+    
         if (mCurLevel == mTopLevel + 1) {
             if (mTopLevel == -1) {
                 long recordLength = mSerialBitmap.getRecordLength();
@@ -93,7 +95,7 @@ public class SerialBitmapIterator extends BitmapIterator {
         } else {
             long curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
             if (curIdx > mCtxInfo[mCurLevel - 1].end_idx) {
-                mCurLevel--;
+                --mCurLevel;
                 return false;
             }
             startPos = mCtxInfo[mCurLevel - 1].positions[(int) curIdx];
@@ -121,7 +123,7 @@ public class SerialBitmapIterator extends BitmapIterator {
             generateCommaPositions(i, endPos, mCurLevel, mCtxInfo[mCurLevel]);
             return true;
         }
-        mCurLevel--;
+        --mCurLevel;
         return false;
     }
 
@@ -225,24 +227,44 @@ public class SerialBitmapIterator extends BitmapIterator {
         return true;
     }
 
-    // Returns the value of the current field (as a String).
     public String getValue() {
-        if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth()) return null;
-        long curIdx = mCtxInfo[mCurLevel].cur_idx;
-        long nextIdx = curIdx + 1;
-        if (nextIdx > mCtxInfo[mCurLevel].end_idx) return null;
-        long curPos = mCtxInfo[mCurLevel].positions[(int) curIdx];
-        long nextPos = mCtxInfo[mCurLevel].positions[(int) nextIdx];
-        if (mCtxInfo[mCurLevel].type == OBJECT && nextIdx < mCtxInfo[mCurLevel].end_idx) {
+        // 1) bounds
+        if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth()) 
+            return null;
+
+        IterCtxInfo info    = mCtxInfo[mCurLevel];
+        long    curIdx  = info.cur_idx;
+        long    nextIdx = curIdx + 1;
+        if (nextIdx > info.end_idx) 
+            return null;
+
+        // 2) positions of separators
+        long curPos  = info.positions[(int)curIdx];
+        long nextPos = info.positions[(int)nextIdx];
+        System.out.println("cur pos " + (curPos + 1) + "  next pos " + nextPos);
+        // 3) if we're inside an OBJECT, find the quote‐delimited field name
+        if (info.type == OBJECT && nextIdx < info.end_idx) {
             FieldQuotePos pos = findFieldQuotePos(nextPos);
-            if (pos == null)
+            if (pos == null) 
                 return "";
             nextPos = pos.start;
         }
-        long textLength = nextPos - curPos - 1;
-        if (textLength <= 0) return "";
-        return mSerialBitmap.getRecord().substring((int) curPos + 1, (int) curPos + 1 + (int) textLength);
+
+        // 4) extract the substring
+        long textLen = nextPos - curPos - 1;
+        System.out.println("cur pos " + (curPos + 1) + " textLength " + textLen);
+
+        if (textLen <= 0) 
+            return "";
+
+        return mSerialBitmap
+                .getRecord()
+                .substring(
+                (int)(curPos + 1),
+                (int)(curPos + 1 + textLen)
+                );
     }
+
 
     // --- Helper Methods ---
 
@@ -288,35 +310,49 @@ public class SerialBitmapIterator extends BitmapIterator {
     // Given a colon position, tries to locate the positions of the surrounding quotation marks.
     // Returns a FieldQuotePos object containing the start and end offsets (or null if not found).
     private FieldQuotePos findFieldQuotePos(long colonPos) {
-        long w_id = colonPos / 64;
-        long startQuote = 0;
-        long endQuote = 0;
-        while (w_id >= 0) {
-            long quoteBit = mSerialBitmap.getQuoteBitmap((int)w_id);
-            long offset = w_id * 64 + Long.numberOfTrailingZeros(quoteBit);
-            while (quoteBit != 0 && offset < colonPos) {
-                if (endQuote != 0) {
-                    startQuote = offset;
-                } else if (startQuote == 0) {
-                    startQuote = offset;
-                } else if (endQuote == 0) {
-                    endQuote = offset;
-                } else {
-                    startQuote = endQuote;
-                    endQuote = offset;
-                }
-                quoteBit &= (quoteBit - 1);
-                offset = w_id * 64 + Long.numberOfTrailingZeros(quoteBit);
+         long w_id       = colonPos / 64;
+    long startQuote = 0;
+    long endQuote   = 0;
+
+    // walk words downward
+    while (w_id >= 0) {
+        long bits = mSerialBitmap.getQuoteBitmap((int) w_id);
+
+        // scan all set bits in this word
+        while (bits != 0) {
+            int tz     = Long.numberOfTrailingZeros(bits);
+            long offset= w_id * 64 + tz;
+            if (offset >= colonPos) break;
+
+            // shift our two‐quote window
+            if      (endQuote   != 0) { startQuote = offset; }
+            else if (startQuote == 0) { startQuote = offset; }
+            else if (endQuote   == 0) { endQuote   = offset; }
+            else { 
+                startQuote = endQuote;
+                endQuote   = offset;
             }
-            if (startQuote != 0 && endQuote == 0) {
-                endQuote = startQuote;
-                return new FieldQuotePos(startQuote, endQuote);
-            } else if (startQuote != 0 && endQuote != 0) {
-                return new FieldQuotePos(startQuote, endQuote);
-            }
-            w_id--;
+
+            bits &= (bits - 1);
         }
-        return null;
+
+        // if two quotes found, return them
+        if (startQuote != 0 && endQuote != 0) {
+            return new FieldQuotePos(startQuote, endQuote);
+        }
+        // if exactly one quote found so far,
+        // promote it to endQuote and reset startQuote,
+        // then keep scanning lower words for a second
+        if (startQuote != 0 && endQuote == 0) {
+            endQuote   = startQuote;
+            startQuote = 0;
+        }
+
+        w_id--;
+    }
+
+    // never found a matching pair
+    return null;
     }
 
     // --- Inner Helper Classes ---

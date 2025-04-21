@@ -67,7 +67,8 @@ public class RecordLoader {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Failed to open the file.");
+            System.out.println("Failed to open the file." + e.getMessage());
+             e.printStackTrace();
         }
 
         String concatenated = fullText.toString();

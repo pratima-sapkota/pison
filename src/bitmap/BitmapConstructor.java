@@ -8,11 +8,9 @@ public class BitmapConstructor {
         System.out.println("\nConstructing bitmap with " + threadNum + " threads and " + levelNum + " levels.");
         Bitmap bm;
         if (threadNum == 1) {
-            System.out.println("Using serial bitmap constructor.");
             bm = SerialBitmapConstructor.construct(record, levelNum);
             bm.type = Bitmap.SEQUENTIAL;
         } else {
-            System.out.println("Using parallel bitmap constructor.");
             bm = ParallelBitmapConstructor.construct(record, threadNum, levelNum);
             bm.type = Bitmap.PARALLEL;
         }

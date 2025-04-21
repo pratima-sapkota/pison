@@ -71,7 +71,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     // Moves one level up in the nested record.
     public boolean up() {
         if (mCurLevel == mTopLevel) return false;
-        mCurLevel--;
+        --mCurLevel;
         return true;
     }
 
@@ -102,7 +102,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         } else {
             int curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
             if (curIdx > mCtxInfo[mCurLevel - 1].end_idx) {
-                mCurLevel--;
+                --mCurLevel;
                 return false;
             }
             startPos = mCtxInfo[mCurLevel - 1].positions[curIdx];
@@ -135,7 +135,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
             }
             return true;
         }
-        mCurLevel--;
+        --mCurLevel;
         return false;
     }
 
@@ -335,59 +335,91 @@ public class ParallelBitmapIterator extends BitmapIterator {
     }
 
     // Generates comma positions in parallel using Java threads.
-    private void generateCommaPositionsParallel(long startPos, long endPos, int level, long[] commaPositions) {
-        int startChunk = -1, endChunk = -1;
-        int chunkNum = mParallelBitmap.getThreadNum();
-        for (int i = mCurChunkId; i < chunkNum; ++i) {
-            if (pbMetadata[i].startWordId <= startPos / 64)
-                startChunk = i;
-            if (pbMetadata[i].endWordId >= Math.ceil((double) endPos / 64) && endChunk == -1)
-                endChunk = i;
-            if (startChunk > -1 && endChunk > -1) break;
+    private int generateCommaPositionsParallel(
+    long   startPos,
+    long   endPos,
+    int    level,
+    long[] commaPositions
+) {
+    int chunkNum   = mParallelBitmap.getThreadNum();
+    int startChunk = -1, endChunk = -1;
+
+    long startWord = startPos    / 64;
+    long   endWord = (endPos + 63) / 64;
+
+    // find start/end chunk
+    for (int i = mCurChunkId; i < chunkNum; ++i) {
+        if (pbMetadata[i].startWordId <= startWord) {
+            startChunk = i;
         }
-        if (startChunk == 0 && endChunk == -1) endChunk = 0;
-        mCurChunkId = startChunk;
-        Thread[] threads = new Thread[MAX_THREAD];
-        for (int i = startChunk; i <= endChunk; ++i) {
-            final int tid = i;
-            commaPosInfo[tid].threadId = tid;
-            commaPosInfo[tid].level = level;
-            commaPosInfo[tid].startPos = startPos;
-            commaPosInfo[tid].endPos = endPos;
-            commaPosInfo[tid].commaPositions = new long[MAX_NUM_ELE / mParallelBitmap.getThreadNum() + 1];
-            commaPosInfo[tid].topCommaPositions = -1;
-            threads[tid] = new Thread(() -> {
-                long[] levels = pbMetadata[tid].levCommaBitmap[level];
-                if (levels == null)
-                    return;
-                long curStartPos = pbMetadata[tid].startWordId;
-                long curEndPos = pbMetadata[tid].endWordId;
-                long st = Math.max(curStartPos, startPos / 64);
-                long ed = Math.min(curEndPos, (long) Math.ceil((double) endPos / 64));
-                for (long j = st; j < ed; ++j) {
-                    int idx = (tid >= 1) ? (int) (j - curStartPos) : (int) j;
-                    long commaBit = levels[idx];
-                    while (commaBit != 0) {
-                        long offset = j * 64 + Long.numberOfTrailingZeros(commaBit);
-                        if (startPos <= offset && offset <= endPos)
-                            commaPosInfo[tid].commaPositions[++commaPosInfo[tid].topCommaPositions] = offset;
-                        commaBit &= commaBit - 1;
+        if (pbMetadata[i].endWordId >= endWord && endChunk < 0) {
+            endChunk = i;
+        }
+        if (startChunk >= 0 && endChunk >= 0) break;
+    }
+    if (startChunk == 0 && endChunk < 0) endChunk = 0;
+    mCurChunkId = startChunk;
+
+    // spawn threads
+    Thread[] threads = new Thread[endChunk+1];
+    for (int i = startChunk; i <= endChunk; ++i) {
+        final int tid = i;
+        // reset per‑thread storage
+        commaPosInfo[tid].threadId           = tid;
+        commaPosInfo[tid].level              = level;
+        commaPosInfo[tid].startPos           = startPos;
+        commaPosInfo[tid].endPos             = endPos;
+        commaPosInfo[tid].commaPositions     =
+            new long[MAX_NUM_ELE / chunkNum + 1];
+        commaPosInfo[tid].topCommaPositions  = -1;
+
+        threads[tid] = new Thread(() -> {
+            long[] levels = pbMetadata[tid].levCommaBitmap[level];
+            if (levels == null) return;
+
+            long cStart = pbMetadata[tid].startWordId;
+            long cEnd   = pbMetadata[tid].endWordId;
+
+            long st = Math.max(cStart, startWord);
+            long ed = Math.min(cEnd,   endWord);
+
+            for (long w = st; w < ed; w++) {
+                int idx = (int)(w - cStart);
+                long bits = levels[idx];
+                while (bits != 0) {
+                    long bitPos = Long.numberOfTrailingZeros(bits);
+                    long offset = w * 64 + bitPos;
+                    if (startPos <= offset && offset <= endPos) {
+                        int top = ++commaPosInfo[tid].topCommaPositions;
+                        commaPosInfo[tid].commaPositions[top] = offset;
                     }
+                    bits &= bits - 1;
                 }
-            });
-            threads[tid].start();
+            }
+        });
+        threads[tid].start();
+    }
+
+    // join & collect
+    int outIdx = -1;
+    for (int tid = startChunk; tid <= endChunk; tid++) {
+         try {
+            threads[tid].join();
+        } catch (InterruptedException e) {
+            // restore the interrupted flag
+            Thread.currentThread().interrupt();
+            // optionally log or wrap in an unchecked exception:
+            throw new RuntimeException("Interrupted while waiting for thread " + tid, e);
         }
-        for (int i = startChunk; i <= endChunk; ++i) {
-            try {
-                threads[i].join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            for (int j = 0; j <= commaPosInfo[i].topCommaPositions; ++j) {
-                commaPositions[++mCtxInfo[level].end_idx] = commaPosInfo[i].commaPositions[j];
-            }
+        int top = commaPosInfo[tid].topCommaPositions;
+        for (int j = 0; j <= top; j++) {
+            commaPositions[++outIdx] =
+                commaPosInfo[tid].commaPositions[j];
         }
     }
+
+    return outIdx + 1;  // total number of commas found
+}
 
     // Finds the start and end positions of field quotes around a colon.
     private FieldQuoteResult findFieldQuotePos(long colonPos) {
@@ -429,7 +461,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 endQuote = startQuote;
             else if (startQuote != 0 && endQuote != 0)
                 return new FieldQuoteResult(startQuote, endQuote);
-            wId--;
+            --wId;
         }
         return null;
     }

@@ -6,8 +6,8 @@ import java.util.Arrays;
 
 public class LocalBitmap extends Bitmap {
     // Constants
-    private static final int MAX_LEVEL = 32;
-    public static final int UNKNOWN = -2;
+    private static final int MAX_LEVEL = 22;
+    public static final int UNKNOWN = 9;
     // Using 256-bit wide species (32 bytes) for byte vectors.
     //private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_256;
     
@@ -15,7 +15,7 @@ public class LocalBitmap extends Bitmap {
     private int mNumTknErr;
     private int mNumTrial;
     private int mThreadId;
-    private byte[] mRecord;
+    private String mRecord;
     private long mRecordLength;
     private int mNumTmpWords;  // record length/32
     private int mNumWords;     // record length/64
@@ -47,7 +47,7 @@ public class LocalBitmap extends Bitmap {
     public LocalBitmap() { }
     
     // Constructor with record and level number.
-    public LocalBitmap(byte[] record, int levelNum) {
+    public LocalBitmap(String record, int levelNum) {
         mThreadId = 0;
         mRecord = record;
         mDepth = levelNum - 1;
@@ -165,7 +165,7 @@ public class LocalBitmap extends Bitmap {
         for (int j = 0; j < 2; ++j) {
             ++mNumTrial;
             int state = startStates[j];
-            tkn.createIterator(new String(mRecord, StandardCharsets.UTF_8), state);
+            tkn.createIterator(mRecord, state);
             while (true) {
                 int tknStatus = tkn.hasNextToken();
                 if (tknStatus == Tokenizer.END)
@@ -237,7 +237,7 @@ public class LocalBitmap extends Bitmap {
         for (int j = 0; j < mNumTmpWords; ++j) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
-        byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+        byte[] slice = Arrays.copyOfRange(mRecord.getBytes(StandardCharsets.UTF_8), off, off + 32);
         long[] bits = JsonSimd.processChunk(slice);
         colonbit    = bits[0];
         quotebit    = bits[1];
@@ -297,7 +297,7 @@ public class LocalBitmap extends Bitmap {
 
                 // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
                 prev_iter_inside_quote = str_mask >> 63;
-
+    System.out.println("prev_iter_inside_quote " + prev_iter_inside_quote);
                 
                 // Step 4: Exclude characters inside strings.
                 long tmp = ~str_mask;
@@ -499,7 +499,7 @@ public class LocalBitmap extends Bitmap {
         for (int j = 0; j < mNumTmpWords; ++j) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
             int off = j * 32;
-            byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
+            byte[] slice = Arrays.copyOfRange(mRecord.getBytes(StandardCharsets.UTF_8), off, off + 32);
             long[] bits = JsonSimd.processChunk(slice);
 
             colonbit    = bits[0];
@@ -706,7 +706,7 @@ public class LocalBitmap extends Bitmap {
                         } else if (cb_bit == rb_bit) {
                             rb_mask &= (rb_mask - 1);
                             rb_bit = rb_mask & -rb_mask;
-                            cur_level--;
+                            --cur_level;
                         }
                         first = second;
                         cb_mask &= (cb_mask - 1);

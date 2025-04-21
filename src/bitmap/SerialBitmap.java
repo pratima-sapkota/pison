@@ -3,10 +3,11 @@ package bitmap;
 import java.util.Arrays;
 import java.nio.charset.StandardCharsets;
 import tokenizer.*;
+import java.util.stream.Collectors;
 
 public class SerialBitmap extends Bitmap {
     // Adjust MAX_LEVEL as needed.
-    public static final int MAX_LEVEL = 64;
+    public static final int MAX_LEVEL = 22;
 
     // Members corresponding to the C++ class.
     private String mRecord;
@@ -90,23 +91,6 @@ public class SerialBitmap extends Bitmap {
         }
     }
 
-    // Helper method to compute a string mask via a simple prefix scan.
-    // (This is only an approximation of the _mm_clmulepi64_si128 work in C++.)
-    private long computeStringMask(long quoteBits, long prevInside) {
-        long mask = 0;
-        long inside = prevInside; // 0 or 1 to indicate whether we are inside quotes
-        // Process 64 bits.
-        for (int bit = 0; bit < 64; ++bit) {
-            if (((quoteBits >> bit) & 1L) != 0) {
-                inside ^= 1; // flip the inside flag for each quote
-            }
-            if (inside == 1) {
-                mask |= (1L << bit);
-            }
-        }
-        return mask;
-    }
-
     // Main method to construct the index. This is a direct translation
     // of the C++ indexConstruction() method.
     public void indexConstruction() {
@@ -125,9 +109,12 @@ public class SerialBitmap extends Bitmap {
         long lbracebit0 = 0, rbracebit0 = 0, commabit0 = 0;
         long lbracketbit0 = 0, rbracketbit0 = 0;
 
+        long first, second;
         long colonbit, quotebit, escapebit,
              lbracebit, rbracebit, commabit,
              lbracketbit, rbracketbit;
+
+        long lb_mask, rb_mask, cb_mask, lb_bit, rb_bit, cb_bit;
 
         // Context variables.
         int cur_level = -1;
@@ -192,17 +179,17 @@ public class SerialBitmap extends Bitmap {
             long odd_start_even_end = odd_carry_ends & even_bits;
             long odd_ends = even_start_odd_end | odd_start_even_end;
             long quote_bits = quotebit & ~odd_ends;
-            ++top_word;
-            mQuoteBitmap[top_word] = quote_bits;
+            
+            mQuoteBitmap[++top_word] = quote_bits;
 
             // Step 3: Build string mask bitmaps (simulate carry-less multiplication via a prefix scan).
            // call into your native computeStrMask, then xor in Java
             long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
                         ^ prev_iter_inside_quote;
-
+            // System.out.println("str_mask " + str_mask);
             // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
             prev_iter_inside_quote = str_mask >> 63;
-
+// System.out.println("prev_iter_inside_quote " + prev_iter_inside_quote);
             // Step 4: Update structural character bitmaps.
             long tmp = ~str_mask;
             colonbit  &= tmp;
@@ -213,11 +200,11 @@ public class SerialBitmap extends Bitmap {
             rbracketbit &= tmp;
 
             // Step 5: Generate leveled bitmaps.
-            long lb_mask = lbracebit | lbracketbit;
-            long rb_mask = rbracebit | rbracketbit;
-            long cb_mask = lb_mask | rb_mask;
-            long lb_bit = lb_mask & -lb_mask;
-            long rb_bit = rb_mask & -rb_mask;
+            lb_mask = lbracebit | lbracketbit;
+            rb_mask = rbracebit | rbracketbit;
+            cb_mask = lb_mask | rb_mask;
+            lb_bit = lb_mask & -lb_mask;
+            rb_bit = rb_mask & -rb_mask;
 
             if (cb_mask == 0) {
                 if (cur_level >= 0 && cur_level <= mDepth) {
@@ -235,14 +222,14 @@ public class SerialBitmap extends Bitmap {
                     }
                 }
             } else {
-                long first = 1;
+                first = 1;
                 // The loop continues while there are still bits in cb_mask or first is nonzero.
                 while (cb_mask != 0 || first != 0) {
-                    long second;
+    
                     if (cb_mask == 0) {
                         second = 1L << 63;
                     } else {
-                        long cb_bit = cb_mask & -cb_mask;
+                        cb_bit = cb_mask & -cb_mask;
                         second = cb_bit;
 
                         if (cur_level >= 0 && cur_level <= mDepth) {
@@ -277,7 +264,7 @@ public class SerialBitmap extends Bitmap {
                         }
                     }
                     if (cb_mask != 0) {
-                        long cb_bit = cb_mask & -cb_mask; // recalc for clarity
+                        cb_bit = cb_mask & -cb_mask; // recalc for clarity
                         if (cb_bit == lb_bit) {
                             lb_mask = lb_mask & (lb_mask - 1);
                             lb_bit = lb_mask & -lb_mask;
@@ -291,7 +278,7 @@ public class SerialBitmap extends Bitmap {
                         } else if (cb_bit == rb_bit) {
                             rb_mask = rb_mask & (rb_mask - 1);
                             rb_bit = rb_mask & -rb_mask;
-                            cur_level--;
+                            --cur_level;
                         }
                         first = second;
                         cb_mask = cb_mask & (cb_mask - 1);
@@ -307,5 +294,25 @@ public class SerialBitmap extends Bitmap {
         if (mDepth == MAX_LEVEL - 1) {
             mDepth = max_positive_level;
         }
+        System.out.println("cur level " + cur_level);
+
+// for (int lvl = 0; lvl < mLevColonBitmap.length; lvl++) {
+//     long[] row = mLevColonBitmap[lvl];
+//     if (row == null) continue;
+//     String hexList = Arrays.stream(row)
+//         .mapToObj(l -> String.format("%x", l))
+//         .collect(Collectors.joining(", "));
+//     System.out.println("colon level bitmap[" + lvl + "]: " + hexList);
+// }
+
+// for (int lvl = 0; lvl < mLevCommaBitmap.length; lvl++) {
+//     long[] row = mLevCommaBitmap[lvl];
+//     if (row == null) continue;
+//     String hexList = Arrays.stream(row)
+//         .mapToObj(l -> String.format("%x", l))
+//         .collect(Collectors.joining(", "));
+//     System.out.println("comma level bitmap[" + lvl + "]: " + hexList);
+// }
+
     }
 }

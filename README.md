@@ -17,8 +17,8 @@ This repository contains a Java implementation of the Pison, a scalable structur
 1. **Compile the Project:**  
    Open a terminal or command prompt at the project root and run:
    ```bash
-   g++ -fPIC -mavx2 -mpclmul -msse2 -shared     -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux     -o libjsonsimd.so    include/bitmap_JsonSimd.cpp
-   javac   -h include   -d bin   src/bitmap/*.java   src/records/*.java   src/tests/*.java   src/tokenizer/*.java   src/*.java
+   g++ -fPIC -mavx2 -mpclmul -msse2 -shared -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux -o libjsonsimd.so include/bitmap_JsonSimd.cpp
+   javac -h include -d bin src/bitmap/*.java src/records/*.java src/tokenizer/*.java src/*.java
    ```
    This command compiles all the Java source files and places the resulting `.class` files in the `bin` directory.
 

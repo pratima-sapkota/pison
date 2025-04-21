@@ -80,9 +80,3 @@ class IterCtxInfo {
     // The current level.
     public int level;
 }
-
-// Simple data holding class translated from the C++ struct KeyPos.
-class KeyPos {
-    public long start;
-    public long end;
-}

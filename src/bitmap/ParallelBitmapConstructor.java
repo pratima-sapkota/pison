@@ -16,7 +16,7 @@ public class ParallelBitmapConstructor {
         String recordText = record.getText();
         if (record.getRecStartPos() > 0)
             recordText = recordText.substring(record.getRecStartPos());
-        System.out.println("Record text: " + recordText);
+
         long length = (record.getRecLength() > 0) ? record.getRecLength() : recordText.length();
 
         parallelBitmap = new ParallelBitmap(recordText, length, threadNum, levelNum);

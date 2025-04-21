@@ -28,12 +28,10 @@ public class SerialBitmapConstructor {
         
         // Create the SerialBitmap and perform index construction.
         SerialBitmap bitmap = new SerialBitmap(recordBytes, levelNum);
-        System.out.println("Record length: " + length);
-        System.out.println("Bitmap length: " + bitmap.getLength());
-        System.out.println("Bitmap size: " + bitmap.getSize());
-        
+       
         bitmap.setRecordLength(length);
         bitmap.indexConstruction();
+        System.out.println("Rec length: " + length + " Bitmap size: " + bitmap.getSize());
         return bitmap;
     }
 

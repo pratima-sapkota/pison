@@ -37,7 +37,7 @@ public class ParallelBitmap extends Bitmap {
         this.mParallelMode = NONSPECULATIVE;
 
         for (int i = 0; i < threadNum; ++i) {
-            mBitmaps[i] = new LocalBitmap(mRecord.substring(startIdx).getBytes(StandardCharsets.UTF_8), depth);
+            mBitmaps[i] = new LocalBitmap(mRecord.substring(startIdx), depth);
             mBitmaps[i].setThreadId(i);
             if (i < threadNum - 1) {
                 int padLen = 0;
