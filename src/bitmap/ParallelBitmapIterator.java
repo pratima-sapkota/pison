@@ -1,5 +1,6 @@
 package bitmap;
 
+import java.util.Arrays;
 public class ParallelBitmapIterator extends BitmapIterator {
     // Constants (adjust values as needed)
     public static final int MAX_NUM_ELE = 1000000;
@@ -12,7 +13,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
     private IterCtxInfo[] mCtxInfo = new IterCtxInfo[MAX_LEVEL];
     private boolean[] mPosArrAlloc = new boolean[MAX_LEVEL];
     private int mCurLevel, mTopLevel, mCurChunkId;
-    private String mKey = "";
+    private byte[] mKey = new byte[0];
     private boolean mFindDomArray, mCopiedIterator;
 
     // Global metadata arrays (for per-thread bitmaps)
@@ -116,16 +117,16 @@ public class ParallelBitmapIterator extends BitmapIterator {
         // Skip white spaces.
         int i = (int) startPos;
         if (startPos > 0 || mCurLevel > 0) ++i;
-        char ch = mParallelBitmap.getRecord().charAt(i);
+        byte ch = mParallelBitmap.getRecord()[i];
         while (i < endPos && (ch == ' ' || ch == '\n')) {
-            ch = mParallelBitmap.getRecord().charAt(++i);
+            ch = mParallelBitmap.getRecord()[++i];
         }
         // Decide based on the first non–whitespace char.
-        if (mParallelBitmap.getRecord().charAt(i) == '{') {
+        if (mParallelBitmap.getRecord()[i] == '{') {
             mCtxInfo[mCurLevel].type = IterCtxInfo.OBJECT;
             generateColonPositions(i, endPos, mCurLevel, mCtxInfo[mCurLevel].positions);
             return true;
-        } else if (mParallelBitmap.getRecord().charAt(i) == '[') {
+        } else if (mParallelBitmap.getRecord()[i] == '[') {
             mCtxInfo[mCurLevel].type = IterCtxInfo.ARRAY;
             if (!mFindDomArray && (endPos - i + 1) > SINGLE_THREAD_MAX_ARRAY_SIZE) {
                 generateCommaPositionsParallel(i, endPos, mCurLevel, mCtxInfo[mCurLevel].positions);
@@ -160,14 +161,14 @@ public class ParallelBitmapIterator extends BitmapIterator {
     }
 
     public int keySize() {
-        return mKey.length();
+        return mKey.length;
     }
 
-    public String getKey() {
+    public byte[] getKey() {
         return mKey;
     }
 
-    public boolean moveToKey(String key) {
+    public boolean moveToKey(byte[] key) {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.OBJECT)
             return false;
@@ -178,8 +179,8 @@ public class ParallelBitmapIterator extends BitmapIterator {
             FieldQuoteResult res = findFieldQuotePos(colonPos);
             if (res == null) return false;
             int keySize = (int)(res.end - res.start - 1);
-            if (keySize == key.length()) {
-                String foundKey = mParallelBitmap.getRecord().substring((int) res.start + 1, (int) res.end);
+            if (keySize == key.length) {
+                byte[] foundKey = Arrays.copyOfRange(mParallelBitmap.getRecord(),(int) res.start + 1, (int) res.end);
                 if (foundKey.equals(key)) {
                     mKey = foundKey;
                     mCtxInfo[mCurLevel].cur_idx = curIdx;
@@ -191,7 +192,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         return false;
     }
 
-    public String moveToKey(java.util.Set<String> keySet) {
+    public byte[] moveToKey(java.util.Set<byte[]> keySet) {
         if (keySet.isEmpty() || mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.OBJECT)
             return null;
@@ -201,7 +202,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
             long colonPos = mCtxInfo[mCurLevel].positions[curIdx];
             FieldQuoteResult res = findFieldQuotePos(colonPos);
             if (res == null) return null;
-            String foundKey = mParallelBitmap.getRecord().substring((int) res.start + 1, (int) res.end);
+            byte[] foundKey = Arrays.copyOfRange(mParallelBitmap.getRecord(),(int) res.start + 1, (int) res.end);
             if (keySet.contains(foundKey)) {
                 mCtxInfo[mCurLevel].cur_idx = curIdx;
                 keySet.remove(foundKey);
@@ -231,7 +232,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
         return true;
     }
 
-    public String getValue() {
+    public byte[] getValue() {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth())
             return null;
         int curIdx = mCtxInfo[mCurLevel].cur_idx;
@@ -243,12 +244,12 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (mCtxInfo[mCurLevel].type == IterCtxInfo.OBJECT && nextIdx < mCtxInfo[mCurLevel].end_idx) {
             FieldQuoteResult res = findFieldQuotePos(nextPos);
             if (res == null)
-                return "";
+                return new byte[0];
             nextPos = res.start;
         }
         int textLength = (int) (nextPos - curPos - 1);
-        if (textLength <= 0) return "";
-        return mParallelBitmap.getRecord().substring((int) curPos + 1, (int) curPos + 1 + textLength);
+        if (textLength <= 0) return new byte[0];
+        return Arrays.copyOfRange(mParallelBitmap.getRecord(),(int) curPos + 1, (int) curPos + 1 + textLength);
     }
 
     // ---- Private Helper Methods ----

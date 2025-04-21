@@ -20,7 +20,7 @@ public class Tokenizer {
     public static final int UNKNOWN = 9;
     public static final int INVALID = -1; // invalid
     
-    private String mChunk;
+    private byte[] mChunk;
     private int mStartState;
     private int mCurPos;
     private int mCurTknType;
@@ -31,12 +31,12 @@ public class Tokenizer {
     }
     
     // Constructor with chunk and state
-    public Tokenizer(String chunk, int state) {
+    public Tokenizer(byte[] chunk, int state) {
         createIterator(chunk, state);
     }
     
     // Creates an iterator on the provided chunk with the given start state.
-    public void createIterator(String chunk, int state) {
+    public void createIterator(byte[] chunk, int state) {
         mChunk = chunk;
         mStartState = state;
         mCurPos = 0;
@@ -56,13 +56,13 @@ public class Tokenizer {
     // Private helper to process a string token.
     // Note: The parameter 'pos' is passed by value; its updated value is stored in mNextTknPos.
     private int getStringToken(int pos) {
-        while (pos < mChunk.length()) {
+        while (pos < mChunk.length) {
             int escapeCnt = 0;
-            while (pos < mChunk.length() && mChunk.charAt(pos) == '\\') {
+            while (pos < mChunk.length && mChunk[pos] == '\\') {
                 ++escapeCnt;
                 ++pos;
             }
-            if (pos < mChunk.length() && mChunk.charAt(pos) == '"') {
+            if (pos < mChunk.length && mChunk[pos] == '"') {
                 ++pos;
                 if (escapeCnt % 2 == 0) {
                     mCurTknType = STRING;
@@ -78,7 +78,7 @@ public class Tokenizer {
     
     // Determines if the next valid token exists and sets up token type and next token position.
     public int hasNextToken() {
-        if (mCurPos >= mChunk.length())
+        if (mCurPos >= mChunk.length)
             return END;
         
         if (mCurPos == 0 && mStartState == IN) {
@@ -87,8 +87,8 @@ public class Tokenizer {
         }
         
         int pos = mCurPos;
-        while (pos < mChunk.length()) {
-            char ch = mChunk.charAt(pos);
+        while (pos < mChunk.length) {
+            byte ch = mChunk[pos];
             switch(ch) {
                 case '\t':
                 case '\n':
@@ -129,10 +129,10 @@ public class Tokenizer {
                     ++pos;
                     return getStringToken(pos);
                 case 't': {
-                    if (pos + 3 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'r' &&
-                        mChunk.charAt(pos + 2) == 'u' &&
-                        mChunk.charAt(pos + 3) == 'e') {
+                    if (pos + 3 < mChunk.length &&
+                        mChunk[pos + 1] == 'r' &&
+                        mChunk[pos + 2] == 'u' &&
+                        mChunk[pos + 3] == 'e') {
                         pos += 4;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -142,9 +142,9 @@ public class Tokenizer {
                     }
                 }
                 case 'r': {
-                    if (pos + 3 < mChunk.length() &&
-                        mChunk.charAt(pos + 2) == 'u' &&
-                        mChunk.charAt(pos + 3) == 'e') {
+                    if (pos + 3 < mChunk.length &&
+                        mChunk[pos + 2] == 'u' &&
+                        mChunk[pos + 3] == 'e') {
                         pos += 3;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -154,10 +154,10 @@ public class Tokenizer {
                     }
                 }
                 case 'e': {
-                    if (pos + 1 < mChunk.length() &&
-                        (mChunk.charAt(pos + 1) == ',' ||
-                         mChunk.charAt(pos + 1) == ']' ||
-                         mChunk.charAt(pos + 1) == '}')) {
+                    if (pos + 1 < mChunk.length &&
+                        (mChunk[pos + 1] == ',' ||
+                         mChunk[pos + 1] == ']' ||
+                         mChunk[pos + 1] == '}')) {
                         ++pos;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -167,11 +167,11 @@ public class Tokenizer {
                     }
                 }
                 case 'f': {
-                    if (pos + 4 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'a' &&
-                        mChunk.charAt(pos + 2) == 'l' &&
-                        mChunk.charAt(pos + 3) == 's' &&
-                        mChunk.charAt(pos + 4) == 'e') {
+                    if (pos + 4 < mChunk.length &&
+                        mChunk[pos + 1] == 'a' &&
+                        mChunk[pos + 2] == 'l' &&
+                        mChunk[pos + 3] == 's' &&
+                        mChunk[pos + 4] == 'e') {
                         pos += 5;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -181,10 +181,10 @@ public class Tokenizer {
                     }
                 }
                 case 'a': {
-                    if (pos + 3 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'l' &&
-                        mChunk.charAt(pos + 2) == 's' &&
-                        mChunk.charAt(pos + 3) == 'e') {
+                    if (pos + 3 < mChunk.length &&
+                        mChunk[pos + 1] == 'l' &&
+                        mChunk[pos + 2] == 's' &&
+                        mChunk[pos + 3] == 'e') {
                         pos += 4;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -194,8 +194,8 @@ public class Tokenizer {
                     }
                 }
                 case 's': {
-                    if (pos + 1 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'e') {
+                    if (pos + 1 < mChunk.length &&
+                        mChunk[pos + 1] == 'e') {
                         pos += 2;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -205,10 +205,10 @@ public class Tokenizer {
                     }
                 }
                 case 'n': {
-                    if (pos + 3 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'u' &&
-                        mChunk.charAt(pos + 2) == 'l' &&
-                        mChunk.charAt(pos + 3) == 'l') {
+                    if (pos + 3 < mChunk.length &&
+                        mChunk[pos + 1] == 'u' &&
+                        mChunk[pos + 2] == 'l' &&
+                        mChunk[pos + 3] == 'l') {
                         pos += 4;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -218,15 +218,15 @@ public class Tokenizer {
                     }
                 }
                 case 'u': {
-                    if (pos + 2 < mChunk.length() &&
-                        mChunk.charAt(pos + 1) == 'l' &&
-                        mChunk.charAt(pos + 2) == 'l') {
+                    if (pos + 2 < mChunk.length &&
+                        mChunk[pos + 1] == 'l' &&
+                        mChunk[pos + 2] == 'l') {
                         pos += 3;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
                         return TRUE;
-                    } else if (pos + 1 < mChunk.length() &&
-                               mChunk.charAt(pos + 1) == 'e') {
+                    } else if (pos + 1 < mChunk.length &&
+                               mChunk[pos + 1] == 'e') {
                         pos += 2;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -236,20 +236,20 @@ public class Tokenizer {
                     }
                 }
                 case 'l': {
-                    if (pos + 1 < mChunk.length() &&
-                        (mChunk.charAt(pos + 1) == 'l' ||
-                         mChunk.charAt(pos + 1) == ',' ||
-                         mChunk.charAt(pos + 1) == ']' ||
-                         mChunk.charAt(pos + 1) == '}')) {
+                    if (pos + 1 < mChunk.length &&
+                        (mChunk[pos + 1] == 'l' ||
+                         mChunk[pos + 1] == ',' ||
+                         mChunk[pos + 1] == ']' ||
+                         mChunk[pos + 1] == '}')) {
                         ++pos;
-                        if (pos < mChunk.length() && mChunk.charAt(pos) == 'l')
+                        if (pos < mChunk.length && mChunk[pos] == 'l')
                             ++pos;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
                         return TRUE;
-                    } else if (pos + 2 < mChunk.length() &&
-                               mChunk.charAt(pos + 1) == 's' &&
-                               mChunk.charAt(pos + 2) == 'e') {
+                    } else if (pos + 2 < mChunk.length &&
+                               mChunk[pos + 1] == 's' &&
+                               mChunk[pos + 2] == 'e') {
                         pos += 3;
                         mCurTknType = PRI;
                         mNextTknPos = pos;
@@ -271,8 +271,8 @@ public class Tokenizer {
                 case '9':
                 case '.': {
                     ++pos;
-                    if (pos < mChunk.length()) {
-                        char nextCh = mChunk.charAt(pos);
+                    if (pos < mChunk.length) {
+                        byte nextCh = mChunk[pos];
                         if (nextCh == '}' || nextCh == ']' || nextCh == ' ' ||
                             nextCh == '\t' || nextCh == ',') {
                             mCurTknType = PRI;

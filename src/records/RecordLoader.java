@@ -1,5 +1,7 @@
 package records;
 
+
+import java.util.Set;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -12,6 +14,7 @@ public class RecordLoader {
 
     public static Record loadRecord(String filePath) {
         try {
+            String content = Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
             byte[] bytes = Files.readAllBytes(Paths.get(filePath));
             System.out.println("File size: " + bytes.length);
 
@@ -25,7 +28,7 @@ public class RecordLoader {
             }
 
             recordText = sb.toString();
-            Record record = new Record(recordText, 0, recordText.length(), true);
+            Record record = new Record(recordText, 0, recordText.length(), true, content);
             return record;
         } catch (IOException e) {
             e.printStackTrace(); // This will give you more details
@@ -67,8 +70,7 @@ public class RecordLoader {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Failed to open the file." + e.getMessage());
-             e.printStackTrace();
+            System.out.println("Failed to open the file.");
         }
 
         String concatenated = fullText.toString();

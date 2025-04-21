@@ -1,6 +1,7 @@
 package bitmap;
 
 import tokenizer.*;
+import java.util.Arrays;
 
 public class SerialBitmapIterator extends BitmapIterator {
     // Constants (adjust these values as needed)
@@ -110,15 +111,16 @@ public class SerialBitmapIterator extends BitmapIterator {
         // Skip whitespace to find the next non-space character.
         int i = (int) startPos;
         if (startPos > 0 || mCurLevel > 0) ++i;
-        char ch = mSerialBitmap.getRecord().charAt(i);
+        byte[] record = mSerialBitmap.getRecord();
+        byte ch = record[i];
         while (i < endPos && (ch == ' ' || ch == '\n')) {
-            ch = mSerialBitmap.getRecord().charAt(++i);
+            ch = record[++i];
         }
-        if (mSerialBitmap.getRecord().charAt(i) == '{') {
+        if (record[i] == '{') {
             mCtxInfo[mCurLevel].type = OBJECT;
             generateColonPositions(i, endPos, mCurLevel, mCtxInfo[mCurLevel]);
             return true;
-        } else if (mSerialBitmap.getRecord().charAt(i) == '[') {
+        } else if (record[i] == '[') {
             mCtxInfo[mCurLevel].type = ARRAY;
             generateCommaPositions(i, endPos, mCurLevel, mCtxInfo[mCurLevel]);
             return true;
@@ -150,7 +152,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     }
 
     // Moves to a key field by name within an object.
-    public boolean moveToKey(String key) {
+    public boolean moveToKey(byte[] key) {
         if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != OBJECT) return false;
         long curIdx = mCtxInfo[mCurLevel].cur_idx + 1;
@@ -161,8 +163,8 @@ public class SerialBitmapIterator extends BitmapIterator {
             if (pos == null) return false;
             ++mVisitedFields;
             int keySize = (int) (pos.end - pos.start - 1);
-            if (keySize == key.length()) {
-                String extracted = mSerialBitmap.getRecord().substring((int) pos.start + 1, (int) pos.end);
+            if (keySize == key.length) {
+                byte[] extracted = Arrays.copyOfRange(mSerialBitmap.getRecord(),(int) pos.start + 1, (int) pos.end);
                 if (extracted.equals(key)) {
                     mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
                     return true;
@@ -175,7 +177,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     }
 
     // Moves to one of the keys from the provided set; the matching key is removed from the set.
-    public String moveToKey(java.util.Set<String> keySet) {
+    public byte[] moveToKey(java.util.Set<byte[]> keySet) {
         if (keySet == null || keySet.isEmpty() || mCurLevel < 0 ||
             mCurLevel > mSerialBitmap.getDepth() || mCtxInfo[mCurLevel].type != OBJECT)
             return null;
@@ -187,12 +189,12 @@ public class SerialBitmapIterator extends BitmapIterator {
             if (pos == null) return null;
             ++mVisitedFields;
             boolean hasKey = false;
-            String keyFound = null;
-            for (String key : keySet) {
+            byte[] keyFound = null;
+            for (byte[] key : keySet) {
                 int keySize = (int) (pos.end - pos.start - 1);
-                if (keySize == key.length()) {
+                if (keySize == key.length) {
                     if (!hasKey) {
-                        keyFound = mSerialBitmap.getRecord().substring((int) pos.start + 1, (int) pos.end);
+                        keyFound = Arrays.copyOfRange(mSerialBitmap.getRecord(),(int) pos.start + 1, (int) pos.end);
                         hasKey = true;
                     }
                     if (keyFound.equals(key)) {
@@ -227,43 +229,51 @@ public class SerialBitmapIterator extends BitmapIterator {
         return true;
     }
 
-    public String getValue() {
-        // 1) bounds
-        if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth()) 
-            return null;
+    public byte[] getValue() {
+    // 1) bounds check
+    if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth())
+        return null;
 
-        IterCtxInfo info    = mCtxInfo[mCurLevel];
-        long    curIdx  = info.cur_idx;
-        long    nextIdx = curIdx + 1;
-        if (nextIdx > info.end_idx) 
-            return null;
+    IterCtxInfo info    = mCtxInfo[mCurLevel];
+    long    curIdx  = info.cur_idx;
+    long    nextIdx = curIdx + 1;
+    if (nextIdx > info.end_idx)
+        return null;
 
-        // 2) positions of separators
-        long curPos  = info.positions[(int)curIdx];
-        long nextPos = info.positions[(int)nextIdx];
-        System.out.println("cur pos " + (curPos + 1) + "  next pos " + nextPos);
-        // 3) if we're inside an OBJECT, find the quote‐delimited field name
-        if (info.type == OBJECT && nextIdx < info.end_idx) {
-            FieldQuotePos pos = findFieldQuotePos(nextPos);
-            if (pos == null) 
-                return "";
-            nextPos = pos.start;
-        }
+    // 2) separator positions
+    long curPos  = info.positions[(int)curIdx];
+    long nextPos = info.positions[(int)nextIdx];
+    System.out.println("cur pos " + (curPos + 1) + "  next pos " + nextPos);
 
-        // 4) extract the substring
-        long textLen = nextPos - curPos - 1;
-        System.out.println("cur pos " + (curPos + 1) + " textLength " + textLen);
-
-        if (textLen <= 0) 
-            return "";
-
-        return mSerialBitmap
-                .getRecord()
-                .substring(
-                (int)(curPos + 1),
-                (int)(curPos + 1 + textLen)
-                );
+    // 3) if inside an OBJECT, find the field‐name quotes
+    if (info.type == OBJECT && nextIdx < info.end_idx) {
+        FieldQuotePos pos = findFieldQuotePos(nextPos);
+        if (pos == null)
+            return new byte[0];          // no quotes → empty
+        nextPos = pos.start;
     }
+
+    // 4) compute length and slice
+    long textLen = nextPos - curPos - 1;
+    System.out.println("cur pos " + (curPos + 1) + " textLength " + textLen);
+
+    if (textLen <= 0)
+        return new byte[0];
+
+    byte[] recordBytes = mSerialBitmap.getRecord();
+    int start = (int)(curPos + 1);
+    int end   = (int)(curPos + 1 + textLen);
+
+    // optional safety check
+    if (start < 0 || end > recordBytes.length) {
+        throw new IndexOutOfBoundsException(
+            "slice [" + start + "…" + end + "] in array of length " + recordBytes.length
+        );
+    }
+
+    // copyOfRange takes two ints, so both start and end are ints
+    return Arrays.copyOfRange(recordBytes, start, end);
+}
 
 
     // --- Helper Methods ---

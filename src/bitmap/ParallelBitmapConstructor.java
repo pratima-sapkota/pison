@@ -6,6 +6,7 @@ import java.util.concurrent.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.Future;
+import java.nio.charset.StandardCharsets;
 
 
 public class ParallelBitmapConstructor {
@@ -19,7 +20,8 @@ public class ParallelBitmapConstructor {
 
         long length = (record.getRecLength() > 0) ? record.getRecLength() : recordText.length();
 
-        parallelBitmap = new ParallelBitmap(recordText, length, threadNum, levelNum);
+
+        parallelBitmap = new ParallelBitmap(recordText.getBytes(StandardCharsets.UTF_8), length, threadNum, levelNum);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadNum);
 

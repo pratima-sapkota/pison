@@ -2,6 +2,7 @@ package records;
 
 public class Record {
     public String text;
+    public String content;
     public int recStartPos;
     public int recLength;
     public boolean canDeleteText = true;
@@ -14,8 +15,9 @@ public class Record {
     }
 
     // Constructor with arguments
-    public Record(String text, int start, int length, boolean canDelete) {
+    public Record(String text, int start, int length, boolean canDelete, String content) {
         this.text = text;
+        this.content = content;
         this.recStartPos = start;
         this.recLength = length;
         this.canDeleteText = canDelete;

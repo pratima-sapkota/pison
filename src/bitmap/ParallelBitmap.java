@@ -11,16 +11,16 @@ public class ParallelBitmap extends Bitmap {
 
     private LocalBitmap[] mBitmaps;
     private int mThreadNum;
-    private String mRecord;
+    private byte[] mRecord;
     private long mRecordLength;
     private int mDepth;
     private int mParallelMode;
 
-    public ParallelBitmap(String record, int threadNum, int depth) {
-        this(record, record.length(), threadNum, depth);
+    public ParallelBitmap(byte[] record, int threadNum, int depth) {
+        this(record, record.length, threadNum, depth);
     }
 
-    public ParallelBitmap(String record, long recLen, int threadNum, int depth) {
+    public ParallelBitmap(byte[] record, long recLen, int threadNum, int depth) {
         this.mRecord = record;
         this.mDepth = depth;
         this.mThreadNum = threadNum;
@@ -37,12 +37,12 @@ public class ParallelBitmap extends Bitmap {
         this.mParallelMode = NONSPECULATIVE;
 
         for (int i = 0; i < threadNum; ++i) {
-            mBitmaps[i] = new LocalBitmap(mRecord.substring(startIdx), depth);
+            mBitmaps[i] = new LocalBitmap(mRecord, depth);
             mBitmaps[i].setThreadId(i);
             if (i < threadNum - 1) {
                 int padLen = 0;
-                while (startIdx + chunkLen + padLen - 1 < record.length()
-                        && record.charAt(startIdx + chunkLen + padLen - 1) == '\\') {
+                while (startIdx + chunkLen + padLen - 1 < record.length
+                        && record[startIdx + chunkLen + padLen - 1] == '\\') {
                     padLen += 64;
                 }
                 mBitmaps[i].setRecordLength(chunkLen + padLen);
@@ -75,7 +75,7 @@ public class ParallelBitmap extends Bitmap {
         return mDepth;
     }
 
-    public String getRecord() {
+    public byte[] getRecord() {
         return mRecord;
     }
 
@@ -151,7 +151,7 @@ public class ParallelBitmap extends Bitmap {
             curLevel += (mBitmaps[i].getEndLevel() + 1);
             offset += mBitmaps[i].getNumWords();
         }
-        System.out.println("final level after merge " + curLevel);
+        // System.out.println("final level after merge " + curLevel);
         // System.out.println("Final bitmap length: " + offset);
         // System.out.println("Final bitmap level after merge: " + curLevel);
     }

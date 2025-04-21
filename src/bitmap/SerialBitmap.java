@@ -10,7 +10,7 @@ public class SerialBitmap extends Bitmap {
     public static final int MAX_LEVEL = 22;
 
     // Members corresponding to the C++ class.
-    private String mRecord;
+    private byte[] mRecord;
     private long mRecordLength;
     private long mNumTmpWords;
     private long mNumWords;
@@ -26,7 +26,7 @@ public class SerialBitmap extends Bitmap {
     }
 
     // Constructor taking the record (as a byte array) and level number.
-    public SerialBitmap(String record, int levelNum) {
+    public SerialBitmap(byte[] record, int levelNum) {
         this.mRecord = record;
         this.mDepth = levelNum - 1;
         // mQuoteBitmap will be allocated in setRecordLength.
@@ -53,7 +53,7 @@ public class SerialBitmap extends Bitmap {
         return mNumWords * 8; // 8 bytes per long
     }
 
-    public String getRecord() {
+    public byte[] getRecord() {
         return mRecord;
     }
 
@@ -124,12 +124,11 @@ public class SerialBitmap extends Bitmap {
         long prev_iter_inside_quote = 0L;
         final long even_bits = 0x5555555555555555L;
         final long odd_bits = ~even_bits;
-
-        byte[] recordBytes = mRecord.getBytes(StandardCharsets.UTF_8);
+        
         int numTmp = (int) mNumTmpWords; // assume it fits in int
         for (int j = 0; j < numTmp; ++j) {
             int off = j * 32;
-            byte[] slice = Arrays.copyOfRange(recordBytes, off, off + 32);
+            byte[] slice = Arrays.copyOfRange(mRecord, off, off + 32);
             long[] bits = JsonSimd.processChunk(slice);
             colonbit    = bits[0];
             quotebit    = bits[1];
