@@ -57,9 +57,9 @@ public class ParallelBitmapIterator extends BitmapIterator {
             // Shallow–copy context info; deep copy positions array if needed.
             copy.mCtxInfo[mCurLevel].type = this.mCtxInfo[mCurLevel].type;
             copy.mCtxInfo[mCurLevel].positions = this.mCtxInfo[mCurLevel].positions.clone();
-            copy.mCtxInfo[mCurLevel].start_idx = this.mCtxInfo[mCurLevel].start_idx;
-            copy.mCtxInfo[mCurLevel].end_idx = this.mCtxInfo[mCurLevel].end_idx;
-            copy.mCtxInfo[mCurLevel].cur_idx = -1;
+            copy.mCtxInfo[mCurLevel].startIdx = this.mCtxInfo[mCurLevel].startIdx;
+            copy.mCtxInfo[mCurLevel].endIdx = this.mCtxInfo[mCurLevel].endIdx;
+            copy.mCtxInfo[mCurLevel].curIdx = -1;
             copy.mPosArrAlloc[mCurLevel] = this.mPosArrAlloc[mCurLevel];
             for (int i = mCurLevel + 1; i < MAX_LEVEL; ++i) {
                 copy.mPosArrAlloc[i] = false;
@@ -91,27 +91,27 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 mCtxInfo[mCurLevel].positions = new long[(int)(endPos / threadNum + 1)];
                 mPosArrAlloc[mCurLevel] = true;
             } else {
-                int curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
+                int curIdx = mCtxInfo[mCurLevel - 1].curIdx;
                 startPos = mCtxInfo[mCurLevel - 1].positions[curIdx];
                 endPos = mCtxInfo[mCurLevel - 1].positions[curIdx + 1];
                 mCtxInfo[mCurLevel].positions = new long[MAX_NUM_ELE / threadNum + 1];
                 mPosArrAlloc[mCurLevel] = true;
             }
-            mCtxInfo[mCurLevel].start_idx = 0;
-            mCtxInfo[mCurLevel].cur_idx = -1;
-            mCtxInfo[mCurLevel].end_idx = -1;
+            mCtxInfo[mCurLevel].startIdx = 0;
+            mCtxInfo[mCurLevel].curIdx = -1;
+            mCtxInfo[mCurLevel].endIdx = -1;
         } else {
-            int curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
-            if (curIdx > mCtxInfo[mCurLevel - 1].end_idx) {
+            int curIdx = mCtxInfo[mCurLevel - 1].curIdx;
+            if (curIdx > mCtxInfo[mCurLevel - 1].endIdx) {
                 --mCurLevel;
                 return false;
             }
             startPos = mCtxInfo[mCurLevel - 1].positions[curIdx];
             endPos = mCtxInfo[mCurLevel - 1].positions[curIdx + 1];
             mCtxInfo[mCurLevel].positions = mCtxInfo[mCurLevel - 1].positions;
-            mCtxInfo[mCurLevel].start_idx = mCtxInfo[mCurLevel - 1].end_idx + 1;
-            mCtxInfo[mCurLevel].cur_idx = mCtxInfo[mCurLevel - 1].end_idx;
-            mCtxInfo[mCurLevel].end_idx = mCtxInfo[mCurLevel - 1].end_idx;
+            mCtxInfo[mCurLevel].startIdx = mCtxInfo[mCurLevel - 1].endIdx + 1;
+            mCtxInfo[mCurLevel].curIdx = mCtxInfo[mCurLevel - 1].endIdx;
+            mCtxInfo[mCurLevel].endIdx = mCtxInfo[mCurLevel - 1].endIdx;
         }
 
         // Skip white spaces.
@@ -154,9 +154,9 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.ARRAY)
             return false;
-        long nextIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        if (nextIdx >= mCtxInfo[mCurLevel].end_idx) return false;
-        mCtxInfo[mCurLevel].cur_idx = (int) nextIdx;
+        long nextIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        if (nextIdx >= mCtxInfo[mCurLevel].endIdx) return false;
+        mCtxInfo[mCurLevel].curIdx = (int) nextIdx;
         return true;
     }
 
@@ -172,8 +172,8 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.OBJECT)
             return false;
-        int curIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        int endIdx = mCtxInfo[mCurLevel].end_idx;
+        int curIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        int endIdx = mCtxInfo[mCurLevel].endIdx;
         while (curIdx < endIdx) {
             long colonPos = mCtxInfo[mCurLevel].positions[curIdx];
             FieldQuoteResult res = findFieldQuotePos(colonPos);
@@ -183,7 +183,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 byte[] foundKey = Arrays.copyOfRange(mParallelBitmap.getRecord(),(int) res.start + 1, (int) res.end);
                 if (foundKey.equals(key)) {
                     mKey = foundKey;
-                    mCtxInfo[mCurLevel].cur_idx = curIdx;
+                    mCtxInfo[mCurLevel].curIdx = curIdx;
                     return true;
                 }
             }
@@ -196,28 +196,29 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (keySet.isEmpty() || mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.OBJECT)
             return null;
-        int curIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        int endIdx = mCtxInfo[mCurLevel].end_idx;
+        int curIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        int endIdx = mCtxInfo[mCurLevel].endIdx;
         while (curIdx < endIdx) {
             long colonPos = mCtxInfo[mCurLevel].positions[curIdx];
             FieldQuoteResult res = findFieldQuotePos(colonPos);
             if (res == null) return null;
             byte[] foundKey = Arrays.copyOfRange(mParallelBitmap.getRecord(),(int) res.start + 1, (int) res.end);
+            
             if (keySet.contains(foundKey)) {
-                mCtxInfo[mCurLevel].cur_idx = curIdx;
+                mCtxInfo[mCurLevel].curIdx = curIdx;
                 keySet.remove(foundKey);
                 return foundKey;
             }
             ++curIdx;
         }
-        mCtxInfo[mCurLevel].cur_idx = curIdx;
+        mCtxInfo[mCurLevel].curIdx = curIdx;
         return null;
     }
 
     public int numArrayElements() {
         if (mCurLevel >= 0 && mCurLevel <= mParallelBitmap.getDepth() &&
             mCtxInfo[mCurLevel].type == IterCtxInfo.ARRAY) {
-            return mCtxInfo[mCurLevel].end_idx - mCtxInfo[mCurLevel].start_idx;
+            return mCtxInfo[mCurLevel].endIdx - mCtxInfo[mCurLevel].startIdx;
         }
         return 0;
     }
@@ -226,22 +227,22 @@ public class ParallelBitmapIterator extends BitmapIterator {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != IterCtxInfo.ARRAY)
             return false;
-        long nextIdx = mCtxInfo[mCurLevel].start_idx + index;
-        if (nextIdx > mCtxInfo[mCurLevel].end_idx) return false;
-        mCtxInfo[mCurLevel].cur_idx = (int) nextIdx;
+        long nextIdx = mCtxInfo[mCurLevel].startIdx + index;
+        if (nextIdx > mCtxInfo[mCurLevel].endIdx) return false;
+        mCtxInfo[mCurLevel].curIdx = (int) nextIdx;
         return true;
     }
 
     public byte[] getValue() {
         if (mCurLevel < 0 || mCurLevel > mParallelBitmap.getDepth())
             return null;
-        int curIdx = mCtxInfo[mCurLevel].cur_idx;
+        int curIdx = mCtxInfo[mCurLevel].curIdx;
         int nextIdx = curIdx + 1;
-        if (nextIdx > mCtxInfo[mCurLevel].end_idx)
+        if (nextIdx > mCtxInfo[mCurLevel].endIdx)
             return null;
         long curPos = mCtxInfo[mCurLevel].positions[curIdx];
         long nextPos = mCtxInfo[mCurLevel].positions[nextIdx];
-        if (mCtxInfo[mCurLevel].type == IterCtxInfo.OBJECT && nextIdx < mCtxInfo[mCurLevel].end_idx) {
+        if (mCtxInfo[mCurLevel].type == IterCtxInfo.OBJECT && nextIdx < mCtxInfo[mCurLevel].endIdx) {
             FieldQuoteResult res = findFieldQuotePos(nextPos);
             if (res == null)
                 return new byte[0];
@@ -294,7 +295,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 while (colonBit != 0) {
                     long offset = i * 64 + Long.numberOfTrailingZeros(colonBit);
                     if (startPos <= offset && offset <= endPos)
-                        mCtxInfo[level].positions[++mCtxInfo[level].end_idx] = offset;
+                        mCtxInfo[level].positions[++mCtxInfo[level].endIdx] = offset;
                     colonBit &= colonBit - 1;
                 }
             }
@@ -328,7 +329,7 @@ public class ParallelBitmapIterator extends BitmapIterator {
                 while (commaBit != 0) {
                     long offset = i * 64 + Long.numberOfTrailingZeros(commaBit);
                     if (startPos <= offset && offset <= endPos)
-                        mCtxInfo[level].positions[++mCtxInfo[level].end_idx] = offset;
+                        mCtxInfo[level].positions[++mCtxInfo[level].endIdx] = offset;
                     commaBit &= commaBit - 1;
                 }
             }
@@ -501,12 +502,12 @@ public class ParallelBitmapIterator extends BitmapIterator {
         public static final int ARRAY = 2;
         public int type;
         public long[] positions;
-        public int start_idx, end_idx, cur_idx;
+        public int startIdx, endIdx, curIdx;
 
         public IterCtxInfo() {
             type = 0;
             positions = null;
-            start_idx = end_idx = cur_idx = 0;
+            startIdx = endIdx = curIdx = 0;
         }
     }
 }

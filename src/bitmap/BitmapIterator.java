@@ -217,17 +217,17 @@ public abstract class BitmapIterator {
 // Simple data holding class translated from the C++ struct IterCtxInfo.
 class IterCtxInfo {
     // current thread id for parsing and querying (used during leveled bitmap iteration)
-    public int thread_id;
+    public int threadId;
     // OBJECT or ARRAY
     public int type;
     // Position array for colon and comma positions.
     public long[] positions;
     // Start index of the record position array at the current level.
-    public long start_idx;
+    public long startIdx;
     // End index of the record position array at the current level.
-    public long end_idx;
+    public long endIdx;
     // Current index of the record position array at the current level.
-    public long cur_idx;
+    public long curIdx;
     // The current level.
     public int level;
 }

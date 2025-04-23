@@ -57,10 +57,8 @@ public class Main {
 }
 
     public static void main(String[] args) {
-        // Arguments
         String filePath = "dataset/twitter_sample_large_record.json";
         List<String> keys = Arrays.asList("retweet_count", "user", "name");
-
 
        records.Record record = RecordLoader.loadRecord(filePath);
         if (record == null) {

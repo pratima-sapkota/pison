@@ -47,9 +47,9 @@ public class SerialBitmapIterator extends BitmapIterator {
         if (sbi.mTopLevel >= 0) {
             sbi.mCtxInfo[mCurLevel].type = this.mCtxInfo[mCurLevel].type;
             sbi.mCtxInfo[mCurLevel].positions = this.mCtxInfo[mCurLevel].positions;
-            sbi.mCtxInfo[mCurLevel].start_idx = this.mCtxInfo[mCurLevel].start_idx;
-            sbi.mCtxInfo[mCurLevel].end_idx = this.mCtxInfo[mCurLevel].end_idx;
-            sbi.mCtxInfo[mCurLevel].cur_idx = -1;
+            sbi.mCtxInfo[mCurLevel].startIdx = this.mCtxInfo[mCurLevel].startIdx;
+            sbi.mCtxInfo[mCurLevel].endIdx = this.mCtxInfo[mCurLevel].endIdx;
+            sbi.mCtxInfo[mCurLevel].curIdx = -1;
             if (mCurLevel + 1 < MAX_LEVEL) {
                 sbi.mCtxInfo[mCurLevel + 1].positions = null;
             }
@@ -82,7 +82,7 @@ public class SerialBitmapIterator extends BitmapIterator {
                 mCtxInfo[mCurLevel].positions = new long[(int)(recordLength / 8) + 1];
                 mPosArrAlloc[mCurLevel] = true;
             } else {
-                long curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
+                long curIdx = mCtxInfo[mCurLevel - 1].curIdx;
                 startPos = mCtxInfo[mCurLevel - 1].positions[(int) curIdx];
                 endPos = mCtxInfo[mCurLevel - 1].positions[(int) curIdx + 1];
                 if (mCtxInfo[mCurLevel].positions == null || !mPosArrAlloc[mCurLevel]) {
@@ -90,12 +90,12 @@ public class SerialBitmapIterator extends BitmapIterator {
                     mPosArrAlloc[mCurLevel] = true;
                 }
             }
-            mCtxInfo[mCurLevel].start_idx = 0;
-            mCtxInfo[mCurLevel].cur_idx = -1;
-            mCtxInfo[mCurLevel].end_idx = -1;
+            mCtxInfo[mCurLevel].startIdx = 0;
+            mCtxInfo[mCurLevel].curIdx = -1;
+            mCtxInfo[mCurLevel].endIdx = -1;
         } else {
-            long curIdx = mCtxInfo[mCurLevel - 1].cur_idx;
-            if (curIdx > mCtxInfo[mCurLevel - 1].end_idx) {
+            long curIdx = mCtxInfo[mCurLevel - 1].curIdx;
+            if (curIdx > mCtxInfo[mCurLevel - 1].endIdx) {
                 --mCurLevel;
                 return false;
             }
@@ -103,9 +103,9 @@ public class SerialBitmapIterator extends BitmapIterator {
             endPos = mCtxInfo[mCurLevel - 1].positions[(int) curIdx + 1];
             // Reuse the positions array from the previous level.
             mCtxInfo[mCurLevel].positions = mCtxInfo[mCurLevel - 1].positions;
-            mCtxInfo[mCurLevel].start_idx = mCtxInfo[mCurLevel - 1].end_idx + 1;
-            mCtxInfo[mCurLevel].cur_idx = mCtxInfo[mCurLevel - 1].end_idx;
-            mCtxInfo[mCurLevel].end_idx = mCtxInfo[mCurLevel - 1].end_idx;
+            mCtxInfo[mCurLevel].startIdx = mCtxInfo[mCurLevel - 1].endIdx + 1;
+            mCtxInfo[mCurLevel].curIdx = mCtxInfo[mCurLevel - 1].endIdx;
+            mCtxInfo[mCurLevel].endIdx = mCtxInfo[mCurLevel - 1].endIdx;
         }
 
         // Skip whitespace to find the next non-space character.
@@ -145,9 +145,9 @@ public class SerialBitmapIterator extends BitmapIterator {
     public boolean moveNext() {
         if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != ARRAY) return false;
-        long nextIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        if (nextIdx >= mCtxInfo[mCurLevel].end_idx) return false;
-        mCtxInfo[mCurLevel].cur_idx = (int) nextIdx;
+        long nextIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        if (nextIdx >= mCtxInfo[mCurLevel].endIdx) return false;
+        mCtxInfo[mCurLevel].curIdx = (int) nextIdx;
         return true;
     }
 
@@ -155,8 +155,8 @@ public class SerialBitmapIterator extends BitmapIterator {
     public boolean moveToKey(byte[] key) {
         if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != OBJECT) return false;
-        long curIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        long endIdx = mCtxInfo[mCurLevel].end_idx;
+        long curIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        long endIdx = mCtxInfo[mCurLevel].endIdx;
         while (curIdx < endIdx) {
             long colonPos = mCtxInfo[mCurLevel].positions[(int) curIdx];
             FieldQuotePos pos = findFieldQuotePos(colonPos);
@@ -166,13 +166,13 @@ public class SerialBitmapIterator extends BitmapIterator {
             if (keySize == key.length) {
                 byte[] extracted = Arrays.copyOfRange(mSerialBitmap.getRecord(),(int) pos.start + 1, (int) pos.end);
                 if (extracted.equals(key)) {
-                    mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
+                    mCtxInfo[mCurLevel].curIdx = (int) curIdx;
                     return true;
                 }
             }
             ++curIdx;
         }
-        mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
+        mCtxInfo[mCurLevel].curIdx = (int) curIdx;
         return false;
     }
 
@@ -181,8 +181,8 @@ public class SerialBitmapIterator extends BitmapIterator {
         if (keySet == null || keySet.isEmpty() || mCurLevel < 0 ||
             mCurLevel > mSerialBitmap.getDepth() || mCtxInfo[mCurLevel].type != OBJECT)
             return null;
-        long curIdx = mCtxInfo[mCurLevel].cur_idx + 1;
-        long endIdx = mCtxInfo[mCurLevel].end_idx;
+        long curIdx = mCtxInfo[mCurLevel].curIdx + 1;
+        long endIdx = mCtxInfo[mCurLevel].endIdx;
         while (curIdx < endIdx) {
             long colonPos = mCtxInfo[mCurLevel].positions[(int) curIdx];
             FieldQuotePos pos = findFieldQuotePos(colonPos);
@@ -198,7 +198,7 @@ public class SerialBitmapIterator extends BitmapIterator {
                         hasKey = true;
                     }
                     if (keyFound.equals(key)) {
-                        mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
+                        mCtxInfo[mCurLevel].curIdx = (int) curIdx;
                         keySet.remove(key);
                         return key;
                     }
@@ -206,7 +206,7 @@ public class SerialBitmapIterator extends BitmapIterator {
             }
             ++curIdx;
         }
-        mCtxInfo[mCurLevel].cur_idx = (int) curIdx;
+        mCtxInfo[mCurLevel].curIdx = (int) curIdx;
         return null;
     }
 
@@ -214,7 +214,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     public int numArrayElements() {
         if (mCurLevel >= 0 && mCurLevel <= mSerialBitmap.getDepth() &&
             mCtxInfo[mCurLevel].type == ARRAY) {
-            return mCtxInfo[mCurLevel].end_idx - mCtxInfo[mCurLevel].start_idx;
+            return mCtxInfo[mCurLevel].endIdx - mCtxInfo[mCurLevel].startIdx;
         }
         return 0;
     }
@@ -223,9 +223,9 @@ public class SerialBitmapIterator extends BitmapIterator {
     public boolean moveToIndex(int index) {
         if (mCurLevel < 0 || mCurLevel > mSerialBitmap.getDepth() ||
             mCtxInfo[mCurLevel].type != ARRAY) return false;
-        long nextIdx = mCtxInfo[mCurLevel].start_idx + index;
-        if (nextIdx > mCtxInfo[mCurLevel].end_idx) return false;
-        mCtxInfo[mCurLevel].cur_idx = (int) nextIdx;
+        long nextIdx = mCtxInfo[mCurLevel].startIdx + index;
+        if (nextIdx > mCtxInfo[mCurLevel].endIdx) return false;
+        mCtxInfo[mCurLevel].curIdx = (int) nextIdx;
         return true;
     }
 
@@ -235,9 +235,9 @@ public class SerialBitmapIterator extends BitmapIterator {
         return null;
 
     IterCtxInfo info    = mCtxInfo[mCurLevel];
-    long    curIdx  = info.cur_idx;
+    long    curIdx  = info.curIdx;
     long    nextIdx = curIdx + 1;
-    if (nextIdx > info.end_idx)
+    if (nextIdx > info.endIdx)
         return null;
 
     // 2) separator positions
@@ -246,7 +246,7 @@ public class SerialBitmapIterator extends BitmapIterator {
     System.out.println("cur pos " + (curPos + 1) + "  next pos " + nextPos);
 
     // 3) if inside an OBJECT, find the field‐name quotes
-    if (info.type == OBJECT && nextIdx < info.end_idx) {
+    if (info.type == OBJECT && nextIdx < info.endIdx) {
         FieldQuotePos pos = findFieldQuotePos(nextPos);
         if (pos == null)
             return new byte[0];          // no quotes → empty
@@ -283,16 +283,16 @@ public class SerialBitmapIterator extends BitmapIterator {
     private void generateColonPositions(long startPos, long endPos, int level, IterCtxInfo ctx) {
         long st = startPos / 64;
         long ed = (long) Math.ceil((double) endPos / 64);
-        ctx.end_idx = -1;
+        ctx.endIdx = -1;
         for (long i = st; i < ed; ++i) {
             // Retrieve the i-th element in the level’s colon bitmap.
             long colonBit = mSerialBitmap.getLevColonBitmap(level, (int)i);
             while (colonBit != 0) {
                 long offset = i * 64 + Long.numberOfTrailingZeros(colonBit);
                 if (startPos <= offset && offset <= endPos) {
-                    ++ctx.end_idx;
+                    ++ctx.endIdx;
                     // (Assumes positions array is large enough.)
-                    ctx.positions[(int) ctx.end_idx] = offset;
+                    ctx.positions[(int) ctx.endIdx] = offset;
                 }
                 colonBit &= (colonBit - 1);
             }
@@ -303,14 +303,14 @@ public class SerialBitmapIterator extends BitmapIterator {
     private void generateCommaPositions(long startPos, long endPos, int level, IterCtxInfo ctx) {
         long st = startPos / 64;
         long ed = (long) Math.ceil((double) endPos / 64);
-        ctx.end_idx = -1;
+        ctx.endIdx = -1;
         for (long i = st; i < ed; ++i) {
             long commaBit = mSerialBitmap.getLevCommaBitmap(level, (int)i);
             while (commaBit != 0) {
                 long offset = i * 64 + Long.numberOfTrailingZeros(commaBit);
                 if (startPos <= offset && offset <= endPos) {
-                    ++ctx.end_idx;
-                    ctx.positions[(int) ctx.end_idx] = offset;
+                    ++ctx.endIdx;
+                    ctx.positions[(int) ctx.endIdx] = offset;
                 }
                 commaBit &= (commaBit - 1);
             }
@@ -320,18 +320,18 @@ public class SerialBitmapIterator extends BitmapIterator {
     // Given a colon position, tries to locate the positions of the surrounding quotation marks.
     // Returns a FieldQuotePos object containing the start and end offsets (or null if not found).
     private FieldQuotePos findFieldQuotePos(long colonPos) {
-         long w_id       = colonPos / 64;
+         long wId       = colonPos / 64;
     long startQuote = 0;
     long endQuote   = 0;
 
     // walk words downward
-    while (w_id >= 0) {
-        long bits = mSerialBitmap.getQuoteBitmap((int) w_id);
+    while (wId >= 0) {
+        long bits = mSerialBitmap.getQuoteBitmap((int) wId);
 
         // scan all set bits in this word
         while (bits != 0) {
             int tz     = Long.numberOfTrailingZeros(bits);
-            long offset= w_id * 64 + tz;
+            long offset= wId * 64 + tz;
             if (offset >= colonPos) break;
 
             // shift our two‐quote window
@@ -358,7 +358,7 @@ public class SerialBitmapIterator extends BitmapIterator {
             startQuote = 0;
         }
 
-        w_id--;
+        wId--;
     }
 
     // never found a matching pair
@@ -371,9 +371,9 @@ public class SerialBitmapIterator extends BitmapIterator {
     public static class IterCtxInfo {
         public int type;       // Either OBJECT or ARRAY
         public long[] positions;  // Positions of colons or commas
-        public int start_idx;
-        public int end_idx;
-        public int cur_idx;
+        public int startIdx;
+        public int endIdx;
+        public int curIdx;
 
         public IterCtxInfo() {
             // Allocate an initial capacity; in production consider using an ArrayList or similar.

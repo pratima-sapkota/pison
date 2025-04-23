@@ -217,15 +217,15 @@ public class LocalBitmap extends Bitmap {
         long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
         long strMask;
         
-        long lb_mask, rb_mask, cb_mask;
-        long lb_bit = 0, rb_bit = 0, cb_bit = 0;
+        long lbMask, rbMask, cbMask;
+        long lbBit = 0, rbBit = 0, cbBit = 0;
         long first, second;
-        int cur_level = -1;
-        int top_word = -1;
-        long prev_iter_ends_odd_backslash = 0L;
-        long prev_iter_inside_quote = mStartInStrBitmap;
-        final long even_bits = 0x5555555555555555L;
-        final long odd_bits = ~even_bits;
+        int curLevel = -1;
+        int topWord = -1;
+        long prevIterEndsOddBackslash = 0L;
+        long prevIterInsideQuote = mStartInStrBitmap;
+        final long evenBits = 0x5555555555555555L;
+        final long oddBits = ~evenBits;
         
         // Process each 32-byte block (temporary word).
         for (int j = 0; j < mNumTmpWords; ++j) {
@@ -265,36 +265,36 @@ public class LocalBitmap extends Bitmap {
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
                 
                 // Step 2: Update structural quote bitmap.
-                long bs_bits = escapebit;
-                long start_edges = bs_bits & ~(bs_bits << 1);
-                long even_start_mask = even_bits ^ prev_iter_ends_odd_backslash;
-                long even_starts = start_edges & even_start_mask;
-                long odd_starts = start_edges & ~even_start_mask;
-                AddResult evenRes = addWithOverflow(bs_bits, even_starts);
-                long even_carries = evenRes.sum;
-                AddResult oddRes = addWithOverflow(bs_bits, odd_starts);
-                long odd_carries = oddRes.sum;
-                odd_carries |= prev_iter_ends_odd_backslash;
-                prev_iter_ends_odd_backslash = oddRes.overflow ? 1L : 0L;
-                long even_carry_ends = even_carries & ~bs_bits;
-                long odd_carry_ends = odd_carries & ~bs_bits;
-                long even_start_odd_end = even_carry_ends & odd_bits;
-                long odd_start_even_end = odd_carry_ends & even_bits;
-                long odd_ends = even_start_odd_end | odd_start_even_end;
-                long quote_bits = quotebit & ~odd_ends;
-                mQuoteBitmap[++top_word] = quote_bits;
+                long bsBits = escapebit;
+                long startEdges = bsBits & ~(bsBits << 1);
+                long evenStartMask = evenBits ^ prevIterEndsOddBackslash;
+                long evenStarts = startEdges & evenStartMask;
+                long oddStarts = startEdges & ~evenStartMask;
+                AddResult evenRes = addWithOverflow(bsBits, evenStarts);
+                long evenCarries = evenRes.sum;
+                AddResult oddRes = addWithOverflow(bsBits, oddStarts);
+                long oddCarries = oddRes.sum;
+                oddCarries |= prevIterEndsOddBackslash;
+                prevIterEndsOddBackslash = oddRes.overflow ? 1L : 0L;
+                long evenCarryEnds = evenCarries & ~bsBits;
+                long oddCarryEnds = oddCarries & ~bsBits;
+                long evenStartOddEnd = evenCarryEnds & oddBits;
+                long oddStartEvenEnd = oddCarryEnds & evenBits;
+                long oddEnds = evenStartOddEnd | oddStartEvenEnd;
+                long quoteBits = quotebit & ~oddEnds;
+                mQuoteBitmap[++topWord] = quoteBits;
                 
                 // Step 3: Compute string mask.
                // call into your native computeStrMask, then xor in Java
-                long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
-                            ^ prev_iter_inside_quote;
+                long strMasks = JsonSimd.computeStrMask(quoteBits, prevIterInsideQuote)
+                            ^ prevIterInsideQuote;
 
                 // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
-                prev_iter_inside_quote = str_mask >> 63;
-    // System.out.println("prev_iter_inside_quote " + prev_iter_inside_quote);
+                prevIterInsideQuote = strMasks >> 63;
+    // System.out.println("prevIterInsideQuote " + prevIterInsideQuote);
                 
                 // Step 4: Exclude characters inside strings.
-                long tmp = ~str_mask;
+                long tmp = ~strMasks;
                 colonbit   &= tmp;
                 lbracebit  &= tmp;
                 rbracebit  &= tmp;
@@ -303,82 +303,82 @@ public class LocalBitmap extends Bitmap {
                 rbracketbit &= tmp;
                 
                 // Step 5: Generate leveled bitmaps.
-                lb_mask = lbracebit | lbracketbit;
-                rb_mask = rbracebit | rbracketbit;
-                cb_mask = lb_mask | rb_mask;
-                lb_bit = lb_mask & -lb_mask;
-                rb_bit = rb_mask & -rb_mask;
+                lbMask = lbracebit | lbracketbit;
+                rbMask = rbracebit | rbracketbit;
+                cbMask = lbMask | rbMask;
+                lbBit = lbMask & -lbMask;
+                rbBit = rbMask & -rbMask;
                 
-                if (cb_mask == 0) {
-                    if (cur_level >= 0 && cur_level <= mDepth) {
-                        if (mLevColonBitmap[cur_level] == null) {
-                            mLevColonBitmap[cur_level] = new long[mNumWords];
+                if (cbMask == 0) {
+                    if (curLevel >= 0 && curLevel <= mDepth) {
+                        if (mLevColonBitmap[curLevel] == null) {
+                            mLevColonBitmap[curLevel] = new long[mNumWords];
                         }
-                        if (mLevCommaBitmap[cur_level] == null) {
-                            mLevCommaBitmap[cur_level] = new long[mNumWords];
+                        if (mLevCommaBitmap[curLevel] == null) {
+                            mLevCommaBitmap[curLevel] = new long[mNumWords];
                         }
                         if (colonbit != 0) {
-                            mLevColonBitmap[cur_level][top_word] = colonbit;
+                            mLevColonBitmap[curLevel][topWord] = colonbit;
                         } else {
-                            mLevCommaBitmap[cur_level][top_word] = commabit;
+                            mLevCommaBitmap[curLevel][topWord] = commabit;
                         }
-                    } else if (cur_level < 0) {
-                        int idx = -cur_level;
+                    } else if (curLevel < 0) {
+                        int idx = -curLevel;
                         ensureNegLevColonCapacity(idx);
                         ensureNegLevCommaCapacity(idx);
 
                         if (mNegLevColonBitmap[idx] == null) {
                             mNegLevColonBitmap[idx] = new long[mNumWords];
-                            if (cur_level < mMinNegativeLevel)
-                                mMinNegativeLevel = cur_level;
+                            if (curLevel < mMinNegativeLevel)
+                                mMinNegativeLevel = curLevel;
                         }
                         if (mNegLevCommaBitmap[idx] == null) {
                             mNegLevCommaBitmap[idx] = new long[mNumWords];
                         }
                         if (colonbit != 0) {
-                            mNegLevColonBitmap[idx][top_word] = colonbit;
+                            mNegLevColonBitmap[idx][topWord] = colonbit;
                         } else {
-                            mNegLevCommaBitmap[idx][top_word] = commabit;
+                            mNegLevCommaBitmap[idx][topWord] = commabit;
                         }
                     }
                 } else {
                     first = 1;
                     do {
-                        if (cb_mask == 0) {
+                        if (cbMask == 0) {
                             second = 1L << 63;
                         } else {
-                            cb_bit = cb_mask & -cb_mask;
-                            second = cb_bit;
+                            cbBit = cbMask & -cbMask;
+                            second = cbBit;
                         }
-                        if (cur_level >= 0 && cur_level <= mDepth) {
-                            if (mLevColonBitmap[cur_level] == null) {
-                                mLevColonBitmap[cur_level] = new long[mNumWords];
+                        if (curLevel >= 0 && curLevel <= mDepth) {
+                            if (mLevColonBitmap[curLevel] == null) {
+                                mLevColonBitmap[curLevel] = new long[mNumWords];
                             }
-                            if (mLevCommaBitmap[cur_level] == null) {
-                                mLevCommaBitmap[cur_level] = new long[mNumWords];
+                            if (mLevCommaBitmap[curLevel] == null) {
+                                mLevCommaBitmap[curLevel] = new long[mNumWords];
                             }
                             long mask = second - first;
-                            if (cb_mask == 0)
+                            if (cbMask == 0)
                                 mask |= second;
-                            long colon_mask = mask & colonbit;
-                            if (colon_mask != 0) {
-                                mLevColonBitmap[cur_level][top_word] |= colon_mask;
+                            long colonMask = mask & colonbit;
+                            if (colonMask != 0) {
+                                mLevColonBitmap[curLevel][topWord] |= colonMask;
                             } else {
-                                mLevCommaBitmap[cur_level][top_word] |= (commabit & mask);
+                                mLevCommaBitmap[curLevel][topWord] |= (commabit & mask);
                             }
-                            if (cb_mask != 0) {
-                                if (cb_bit == rb_bit) {
-                                    mLevColonBitmap[cur_level][top_word] |= cb_bit;
-                                    mLevCommaBitmap[cur_level][top_word] |= cb_bit;
-                                } else if (cb_bit == lb_bit && cur_level + 1 <= mDepth) {
-                                    if (mLevCommaBitmap[cur_level + 1] == null) {
-                                        mLevCommaBitmap[cur_level + 1] = new long[mNumWords];
+                            if (cbMask != 0) {
+                                if (cbBit == rbBit) {
+                                    mLevColonBitmap[curLevel][topWord] |= cbBit;
+                                    mLevCommaBitmap[curLevel][topWord] |= cbBit;
+                                } else if (cbBit == lbBit && curLevel + 1 <= mDepth) {
+                                    if (mLevCommaBitmap[curLevel + 1] == null) {
+                                        mLevCommaBitmap[curLevel + 1] = new long[mNumWords];
                                     }
-                                    mLevCommaBitmap[cur_level + 1][top_word] |= cb_bit;
+                                    mLevCommaBitmap[curLevel + 1][topWord] |= cbBit;
                                 }
                             }
-                        } else if (cur_level < 0) {
-                            int idx = -cur_level;
+                        } else if (curLevel < 0) {
+                            int idx = -curLevel;
                             ensureNegLevColonCapacity(idx);
                             ensureNegLevCommaCapacity(idx);
 
@@ -389,66 +389,66 @@ public class LocalBitmap extends Bitmap {
                                 mNegLevCommaBitmap[idx] = new long[mNumWords];
                             }
                             long mask = second - first;
-                            if (cb_mask == 0)
+                            if (cbMask == 0)
                                 mask |= second;
-                            long colon_mask = mask & colonbit;
-                            if (colon_mask != 0) {
-                                mNegLevColonBitmap[idx][top_word] |= colon_mask;
+                            long colonMask = mask & colonbit;
+                            if (colonMask != 0) {
+                                mNegLevColonBitmap[idx][topWord] |= colonMask;
                             } else {
-                                mNegLevCommaBitmap[idx][top_word] |= (commabit & mask);
+                                mNegLevCommaBitmap[idx][topWord] |= (commabit & mask);
                             }
-                            if (cb_mask != 0) {
-                                if (cb_bit == rb_bit) {
-                                    mNegLevColonBitmap[idx][top_word] |= cb_bit;
-                                    mNegLevCommaBitmap[idx][top_word] |= cb_bit;
-                                } else if (cb_bit == lb_bit) {
-                                    if (cur_level + 1 == 0) {
+                            if (cbMask != 0) {
+                                if (cbBit == rbBit) {
+                                    mNegLevColonBitmap[idx][topWord] |= cbBit;
+                                    mNegLevCommaBitmap[idx][topWord] |= cbBit;
+                                } else if (cbBit == lbBit) {
+                                    if (curLevel + 1 == 0) {
                                         if (mLevCommaBitmap[0] == null) {
                                             mLevCommaBitmap[0] = new long[mNumWords];
                                         }
-                                        mLevCommaBitmap[0][top_word] |= cb_bit;
+                                        mLevCommaBitmap[0][topWord] |= cbBit;
                                     } else {
-                                        int idx2 = -(cur_level + 1);
+                                        int idx2 = -(curLevel + 1);
                                         if (mNegLevCommaBitmap[idx2] == null) {
                                             mNegLevCommaBitmap[idx2] = new long[mNumWords];
                                         }
-                                        mNegLevCommaBitmap[idx2][top_word] |= cb_bit;
+                                        mNegLevCommaBitmap[idx2][topWord] |= cbBit;
                                     }
                                 }
                             }
                         }
-                        if (cb_mask != 0) {
-                            if (cb_bit == lb_bit) {
-                                lb_mask &= (lb_mask - 1);
-                                lb_bit = lb_mask & -lb_mask;
-                                ++cur_level;
-                                if (mThreadId == 0 && cur_level == 0) {
-                                    if (mLevCommaBitmap[cur_level] == null) {
-                                        mLevCommaBitmap[cur_level] = new long[mNumWords];
+                        if (cbMask != 0) {
+                            if (cbBit == lbBit) {
+                                lbMask &= (lbMask - 1);
+                                lbBit = lbMask & -lbMask;
+                                ++curLevel;
+                                if (mThreadId == 0 && curLevel == 0) {
+                                    if (mLevCommaBitmap[curLevel] == null) {
+                                        mLevCommaBitmap[curLevel] = new long[mNumWords];
                                     }
-                                    mLevCommaBitmap[cur_level][top_word] |= cb_bit;
+                                    mLevCommaBitmap[curLevel][topWord] |= cbBit;
                                 }
-                            } else if (cb_bit == rb_bit) {
-                                rb_mask &= (rb_mask - 1);
-                                rb_bit = rb_mask & -rb_mask;
-                                --cur_level;
+                            } else if (cbBit == rbBit) {
+                                rbMask &= (rbMask - 1);
+                                rbBit = rbMask & -rbMask;
+                                --curLevel;
                             }
                             first = second;
-                            cb_mask &= (cb_mask - 1);
-                            if (cur_level > mMaxPositiveLevel)
-                                mMaxPositiveLevel = cur_level;
-                            else if (cur_level < mMinNegativeLevel)
-                                mMinNegativeLevel = cur_level;
+                            cbMask &= (cbMask - 1);
+                            if (curLevel > mMaxPositiveLevel)
+                                mMaxPositiveLevel = curLevel;
+                            else if (curLevel < mMinNegativeLevel)
+                                mMinNegativeLevel = curLevel;
                         } else {
                             first = 0;
                         }
-                    } while (cb_mask != 0 || first != 0);
+                    } while (cbMask != 0 || first != 0);
                 }
             }
         }
         if (mDepth == MAX_LEVEL - 1)
             mDepth = mMaxPositiveLevel;
-        mEndLevel = cur_level;
+        mEndLevel = curLevel;
     }
     
     // --- Build String Mask Bitmap ---
@@ -484,11 +484,11 @@ public class LocalBitmap extends Bitmap {
         long colonbit, quotebit, escapebit, lbracebit, rbracebit, commabit, lbracketbit, rbracketbit;
         long strMask;
         
-        int top_word = -1;
-        long prev_iter_ends_odd_backslash = 0L;
-        long prev_iter_inside_quote = mStartInStrBitmap;
-        final long even_bits = 0x5555555555555555L;
-        final long odd_bits = ~even_bits;
+        int topWord = -1;
+        long prevIterEndsOddBackslash = 0L;
+        long prevIterInsideQuote = mStartInStrBitmap;
+        final long evenBits = 0x5555555555555555L;
+        final long oddBits = ~evenBits;
         
         for (int j = 0; j < mNumTmpWords; ++j) {
             colonbit = quotebit = escapebit = lbracebit = rbracebit = commabit = lbracketbit = rbracketbit = 0;
@@ -525,53 +525,53 @@ public class LocalBitmap extends Bitmap {
                 lbracketbit = (lbracketbit << 32) | lbracketbit0;
                 rbracketbit = (rbracketbit << 32) | rbracketbit0;
                 
-                mColonBitmap[++top_word]    = colonbit;
-                mCommaBitmap[top_word]    = commabit;
-                mLbraceBitmap[top_word]   = lbracebit;
-                mRbraceBitmap[top_word]   = rbracebit;
-                mLbracketBitmap[top_word] = lbracketbit;
-                mRbracketBitmap[top_word] = rbracketbit;
+                mColonBitmap[++topWord]    = colonbit;
+                mCommaBitmap[topWord]    = commabit;
+                mLbraceBitmap[topWord]   = lbracebit;
+                mRbraceBitmap[topWord]   = rbracebit;
+                mLbracketBitmap[topWord] = lbracketbit;
+                mRbracketBitmap[topWord] = rbracketbit;
                 
-                long bs_bits = escapebit;
-                long start_edges = bs_bits & ~(bs_bits << 1);
-                long even_start_mask = even_bits ^ prev_iter_ends_odd_backslash;
-                long even_starts = start_edges & even_start_mask;
-                long odd_starts = start_edges & ~even_start_mask;
-                AddResult evenRes = addWithOverflow(bs_bits, even_starts);
-                long even_carries = evenRes.sum;
-                AddResult oddRes = addWithOverflow(bs_bits, odd_starts);
-                long odd_carries = oddRes.sum;
-                odd_carries |= prev_iter_ends_odd_backslash;
-                prev_iter_ends_odd_backslash = oddRes.overflow ? 1L : 0L;
-                long even_carry_ends = even_carries & ~bs_bits;
-                long odd_carry_ends = odd_carries & ~bs_bits;
-                long even_start_odd_end = even_carry_ends & odd_bits;
-                long odd_start_even_end = odd_carry_ends & even_bits;
-                long odd_ends = even_start_odd_end | odd_start_even_end;
-                long quote_bits = quotebit & ~odd_ends;
-                mQuoteBitmap[top_word] = quote_bits;
+                long bsBits = escapebit;
+                long startEdges = bsBits & ~(bsBits << 1);
+                long evenStartMask = evenBits ^ prevIterEndsOddBackslash;
+                long evenStarts = startEdges & evenStartMask;
+                long oddStarts = startEdges & ~evenStartMask;
+                AddResult evenRes = addWithOverflow(bsBits, evenStarts);
+                long evenCarries = evenRes.sum;
+                AddResult oddRes = addWithOverflow(bsBits, oddStarts);
+                long oddCarries = oddRes.sum;
+                oddCarries |= prevIterEndsOddBackslash;
+                prevIterEndsOddBackslash = oddRes.overflow ? 1L : 0L;
+                long evenCarryEnds = evenCarries & ~bsBits;
+                long oddCarryEnds = oddCarries & ~bsBits;
+                long evenStartOddEnd = evenCarryEnds & oddBits;
+                long oddStartEvenEnd = oddCarryEnds & evenBits;
+                long oddEnds = evenStartOddEnd | oddStartEvenEnd;
+                long quoteBits = quotebit & ~oddEnds;
+                mQuoteBitmap[topWord] = quoteBits;
                 
                 // call into your native computeStrMask, then xor in Java
-                long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
-                            ^ prev_iter_inside_quote;
+                long strMasks = JsonSimd.computeStrMask(quoteBits, prevIterInsideQuote)
+                            ^ prevIterInsideQuote;
 
                 // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
-                prev_iter_inside_quote = str_mask >> 63;
+                prevIterInsideQuote = strMasks >> 63;
 
             }
         }
-        mEndInStrBitmap = prev_iter_inside_quote;
+        mEndInStrBitmap = prevIterInsideQuote;
     }
     
     // --- Build Leveled Bitmap ---
     public void buildLeveledBitmap() {
         long colonbit, commabit, lbracebit, rbracebit, lbracketbit, rbracketbit;
         long strMask;
-        long lb_mask, rb_mask, cb_mask;
-        long lb_bit, rb_bit; 
-        long cb_bit = 0;
+        long lbMask, rbMask, cbMask;
+        long lbBit, rbBit; 
+        long cbBit = 0;
         long first, second;
-        int cur_level = -1;
+        int curLevel = -1;
         
         for (int j = 0; j < mNumWords; ++j) {
             colonbit    = mColonBitmap[j];
@@ -590,24 +590,24 @@ public class LocalBitmap extends Bitmap {
             lbracketbit &= tmp;
             rbracketbit &= tmp;
             
-            lb_mask = lbracebit | lbracketbit;
-            rb_mask = rbracebit | rbracketbit;
-            cb_mask = lb_mask | rb_mask;
-            lb_bit = lb_mask & -lb_mask;
-            rb_bit = rb_mask & -rb_mask;
-            int top_word = j;
-            if (cb_mask == 0) {
-                if (cur_level >= 0 && cur_level <= mDepth) {
-                    if (mLevColonBitmap[cur_level] == null)
-                        mLevColonBitmap[cur_level] = new long[mNumWords];
-                    if (mLevCommaBitmap[cur_level] == null)
-                        mLevCommaBitmap[cur_level] = new long[mNumWords];
+            lbMask = lbracebit | lbracketbit;
+            rbMask = rbracebit | rbracketbit;
+            cbMask = lbMask | rbMask;
+            lbBit = lbMask & -lbMask;
+            rbBit = rbMask & -rbMask;
+            int topWord = j;
+            if (cbMask == 0) {
+                if (curLevel >= 0 && curLevel <= mDepth) {
+                    if (mLevColonBitmap[curLevel] == null)
+                        mLevColonBitmap[curLevel] = new long[mNumWords];
+                    if (mLevCommaBitmap[curLevel] == null)
+                        mLevCommaBitmap[curLevel] = new long[mNumWords];
                     if (colonbit != 0)
-                        mLevColonBitmap[cur_level][top_word] = colonbit;
+                        mLevColonBitmap[curLevel][topWord] = colonbit;
                     else
-                        mLevCommaBitmap[cur_level][top_word] = commabit;
-                } else if (cur_level < 0) {
-                    int idx = -cur_level;
+                        mLevCommaBitmap[curLevel][topWord] = commabit;
+                } else if (curLevel < 0) {
+                    int idx = -curLevel;
                     ensureNegLevColonCapacity(idx);
                     ensureNegLevCommaCapacity(idx);
 
@@ -616,44 +616,44 @@ public class LocalBitmap extends Bitmap {
                     if (mNegLevCommaBitmap[idx] == null)
                         mNegLevCommaBitmap[idx] = new long[mNumWords];
                     if (colonbit != 0)
-                        mNegLevColonBitmap[idx][top_word] = colonbit;
+                        mNegLevColonBitmap[idx][topWord] = colonbit;
                     else
-                        mNegLevCommaBitmap[idx][top_word] = commabit;
+                        mNegLevCommaBitmap[idx][topWord] = commabit;
                 }
             } else {
                 first = 1;
                 do {
-                    if (cb_mask == 0)
+                    if (cbMask == 0)
                         second = 1L << 63;
                     else {
-                        cb_bit = cb_mask & -cb_mask;
-                        second = cb_bit;
+                        cbBit = cbMask & -cbMask;
+                        second = cbBit;
                     }
-                    if (cur_level >= 0 && cur_level <= mDepth) {
-                        if (mLevColonBitmap[cur_level] == null)
-                            mLevColonBitmap[cur_level] = new long[mNumWords];
-                        if (mLevCommaBitmap[cur_level] == null)
-                            mLevCommaBitmap[cur_level] = new long[mNumWords];
+                    if (curLevel >= 0 && curLevel <= mDepth) {
+                        if (mLevColonBitmap[curLevel] == null)
+                            mLevColonBitmap[curLevel] = new long[mNumWords];
+                        if (mLevCommaBitmap[curLevel] == null)
+                            mLevCommaBitmap[curLevel] = new long[mNumWords];
                         long mask = second - first;
-                        if (cb_mask == 0)
+                        if (cbMask == 0)
                             mask |= second;
-                        long colon_mask = mask & colonbit;
-                        if (colon_mask != 0)
-                            mLevColonBitmap[cur_level][top_word] |= colon_mask;
+                        long colonMask = mask & colonbit;
+                        if (colonMask != 0)
+                            mLevColonBitmap[curLevel][topWord] |= colonMask;
                         else
-                            mLevCommaBitmap[cur_level][top_word] |= (commabit & mask);
-                        if (cb_mask != 0) {
-                            if (cb_bit == rb_bit) {
-                                mLevColonBitmap[cur_level][top_word] |= cb_bit;
-                                mLevCommaBitmap[cur_level][top_word] |= cb_bit;
-                            } else if (cb_bit == lb_bit && cur_level + 1 <= mDepth) {
-                                if (mLevCommaBitmap[cur_level + 1] == null)
-                                    mLevCommaBitmap[cur_level + 1] = new long[mNumWords];
-                                mLevCommaBitmap[cur_level + 1][top_word] |= cb_bit;
+                            mLevCommaBitmap[curLevel][topWord] |= (commabit & mask);
+                        if (cbMask != 0) {
+                            if (cbBit == rbBit) {
+                                mLevColonBitmap[curLevel][topWord] |= cbBit;
+                                mLevCommaBitmap[curLevel][topWord] |= cbBit;
+                            } else if (cbBit == lbBit && curLevel + 1 <= mDepth) {
+                                if (mLevCommaBitmap[curLevel + 1] == null)
+                                    mLevCommaBitmap[curLevel + 1] = new long[mNumWords];
+                                mLevCommaBitmap[curLevel + 1][topWord] |= cbBit;
                             }
                         }
-                    } else if (cur_level < 0) {
-                        int idx = -cur_level;
+                    } else if (curLevel < 0) {
+                        int idx = -curLevel;
                         ensureNegLevColonCapacity(idx);
                         ensureNegLevCommaCapacity(idx);
 
@@ -662,61 +662,61 @@ public class LocalBitmap extends Bitmap {
                         if (mNegLevCommaBitmap[idx] == null)
                             mNegLevCommaBitmap[idx] = new long[mNumWords];
                         long mask = second - first;
-                        if (cb_mask == 0)
+                        if (cbMask == 0)
                             mask |= second;
-                        long colon_mask = mask & colonbit;
-                        if (colon_mask != 0)
-                            mNegLevColonBitmap[idx][top_word] |= colon_mask;
+                        long colonMask = mask & colonbit;
+                        if (colonMask != 0)
+                            mNegLevColonBitmap[idx][topWord] |= colonMask;
                         else
-                            mNegLevCommaBitmap[idx][top_word] |= (commabit & mask);
-                        if (cb_mask != 0) {
-                            if (cb_bit == rb_bit) {
-                                mNegLevColonBitmap[idx][top_word] |= cb_bit;
-                                mNegLevCommaBitmap[idx][top_word] |= cb_bit;
-                            } else if (cb_bit == lb_bit) {
-                                if (cur_level + 1 == 0) {
+                            mNegLevCommaBitmap[idx][topWord] |= (commabit & mask);
+                        if (cbMask != 0) {
+                            if (cbBit == rbBit) {
+                                mNegLevColonBitmap[idx][topWord] |= cbBit;
+                                mNegLevCommaBitmap[idx][topWord] |= cbBit;
+                            } else if (cbBit == lbBit) {
+                                if (curLevel + 1 == 0) {
                                     if (mLevCommaBitmap[0] == null)
                                         mLevCommaBitmap[0] = new long[mNumWords];
-                                    mLevCommaBitmap[0][top_word] |= cb_bit;
+                                    mLevCommaBitmap[0][topWord] |= cbBit;
                                 } else {
-                                    int idx2 = -(cur_level + 1);
+                                    int idx2 = -(curLevel + 1);
                                     if (mNegLevCommaBitmap[idx2] == null)
                                         mNegLevCommaBitmap[idx2] = new long[mNumWords];
-                                    mNegLevCommaBitmap[idx2][top_word] |= cb_bit;
+                                    mNegLevCommaBitmap[idx2][topWord] |= cbBit;
                                 }
                             }
                         }
                     }
-                    if (cb_mask != 0) {
-                        if (cb_bit == lb_bit) {
-                            lb_mask &= (lb_mask - 1);
-                            lb_bit = lb_mask & -lb_mask;
-                            ++cur_level;
-                            if (mThreadId == 0 && cur_level == 0) {
-                                if (mLevCommaBitmap[cur_level] == null)
-                                    mLevCommaBitmap[cur_level] = new long[mNumWords];
-                                mLevCommaBitmap[cur_level][top_word] |= cb_bit;
+                    if (cbMask != 0) {
+                        if (cbBit == lbBit) {
+                            lbMask &= (lbMask - 1);
+                            lbBit = lbMask & -lbMask;
+                            ++curLevel;
+                            if (mThreadId == 0 && curLevel == 0) {
+                                if (mLevCommaBitmap[curLevel] == null)
+                                    mLevCommaBitmap[curLevel] = new long[mNumWords];
+                                mLevCommaBitmap[curLevel][topWord] |= cbBit;
                             }
-                        } else if (cb_bit == rb_bit) {
-                            rb_mask &= (rb_mask - 1);
-                            rb_bit = rb_mask & -rb_mask;
-                            --cur_level;
+                        } else if (cbBit == rbBit) {
+                            rbMask &= (rbMask - 1);
+                            rbBit = rbMask & -rbMask;
+                            --curLevel;
                         }
                         first = second;
-                        cb_mask &= (cb_mask - 1);
-                        if (cur_level > mMaxPositiveLevel)
-                            mMaxPositiveLevel = cur_level;
-                        else if (cur_level < mMinNegativeLevel)
-                            mMinNegativeLevel = cur_level;
+                        cbMask &= (cbMask - 1);
+                        if (curLevel > mMaxPositiveLevel)
+                            mMaxPositiveLevel = curLevel;
+                        else if (curLevel < mMinNegativeLevel)
+                            mMinNegativeLevel = curLevel;
                     } else {
                         first = 0;
                     }
-                } while (cb_mask != 0 || first != 0);
+                } while (cbMask != 0 || first != 0);
             }
         }
         if (mDepth == MAX_LEVEL - 1)
             mDepth = mMaxPositiveLevel;
-        mEndLevel = cur_level;
+        mEndLevel = curLevel;
     }
     
 // private long movemaskVec(int offset, byte target) {

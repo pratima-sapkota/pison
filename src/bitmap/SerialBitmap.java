@@ -95,14 +95,14 @@ public class SerialBitmap extends Bitmap {
     // of the C++ indexConstruction() method.
     public void indexConstruction() {
         // Define target bytes.
-        byte v_quote = 0x22;      // '"'
-        byte v_colon = 0x3a;       // ':'
-        byte v_escape = 0x5c;      // '\'
-        byte v_lbrace = 0x7b;      // '{'
-        byte v_rbrace = 0x7d;      // '}'
-        byte v_comma = 0x2c;       // ','
-        byte v_lbracket = 0x5b;    // '['
-        byte v_rbracket = 0x5d;    // ']'
+        byte vQuote = 0x22;      // '"'
+        byte vColon = 0x3a;       // ':'
+        byte vEscape = 0x5c;      // '\'
+        byte vLbrace = 0x7b;      // '{'
+        byte vRbrace = 0x7d;      // '}'
+        byte vComma = 0x2c;       // ','
+        byte vLbracket = 0x5b;    // '['
+        byte vRbracket = 0x5d;    // ']'
 
         // Variables to hold lower 32-bit masks before combining.
         long colonbit0 = 0, quotebit0 = 0, escapebit0 = 0;
@@ -114,16 +114,16 @@ public class SerialBitmap extends Bitmap {
              lbracebit, rbracebit, commabit,
              lbracketbit, rbracketbit;
 
-        long lb_mask, rb_mask, cb_mask, lb_bit, rb_bit, cb_bit;
+        long lbMask, rbMask, cbMask, lbBit, rbBit, cbBit;
 
         // Context variables.
-        int cur_level = -1;
-        int max_positive_level = -1;
-        int top_word = -1;
-        long prev_iter_ends_odd_backslash = 0L;
-        long prev_iter_inside_quote = 0L;
-        final long even_bits = 0x5555555555555555L;
-        final long odd_bits = ~even_bits;
+        int curLevel = -1;
+        int maxPosLevel = -1;
+        int topWord = -1;
+        long prevIterEndsOddBackslash = 0L;
+        long prevIterInsideQuote = 0L;
+        final long evenBits = 0x5555555555555555L;
+        final long oddBits = ~evenBits;
         
         int numTmp = (int) mNumTmpWords; // assume it fits in int
         for (int j = 0; j < numTmp; ++j) {
@@ -162,35 +162,35 @@ public class SerialBitmap extends Bitmap {
             }
 
             // Step 2: Update structural quote bitmaps.
-            long bs_bits = escapebit;
-            long start_edges = bs_bits & ~(bs_bits << 1);
-            long even_start_mask = even_bits ^ prev_iter_ends_odd_backslash;
-            long even_starts = start_edges & even_start_mask;
-            long odd_starts = start_edges & ~even_start_mask;
-            long even_carries = bs_bits + even_starts;
-            long odd_carries = bs_bits + odd_starts;
-            boolean iterEndsOddBackslash = Long.compareUnsigned(odd_carries, bs_bits) < 0;
-            odd_carries |= prev_iter_ends_odd_backslash;
-            prev_iter_ends_odd_backslash = iterEndsOddBackslash ? 1L : 0L;
-            long even_carry_ends = even_carries & ~bs_bits;
-            long odd_carry_ends = odd_carries & ~bs_bits;
-            long even_start_odd_end = even_carry_ends & odd_bits;
-            long odd_start_even_end = odd_carry_ends & even_bits;
-            long odd_ends = even_start_odd_end | odd_start_even_end;
-            long quote_bits = quotebit & ~odd_ends;
+            long bsBits = escapebit;
+            long startEdges = bsBits & ~(bsBits << 1);
+            long evenStartMask = evenBits ^ prevIterEndsOddBackslash;
+            long evenStarts = startEdges & evenStartMask;
+            long oddStarts = startEdges & ~evenStartMask;
+            long evenCarries = bsBits + evenStarts;
+            long oddCarries = bsBits + oddStarts;
+            boolean iterEndsOddBackslash = Long.compareUnsigned(oddCarries, bsBits) < 0;
+            oddCarries |= prevIterEndsOddBackslash;
+            prevIterEndsOddBackslash = iterEndsOddBackslash ? 1L : 0L;
+            long evenCarryEnds = evenCarries & ~bsBits;
+            long oddCarryEnds = oddCarries & ~bsBits;
+            long evenStartOddEnd = evenCarryEnds & oddBits;
+            long oddStartEvenEnd = oddCarryEnds & evenBits;
+            long oddEnds = evenStartOddEnd | oddStartEvenEnd;
+            long quoteBits = quotebit & ~oddEnds;
             
-            mQuoteBitmap[++top_word] = quote_bits;
+            mQuoteBitmap[++topWord] = quoteBits;
 
             // Step 3: Build string mask bitmaps (simulate carry-less multiplication via a prefix scan).
            // call into your native computeStrMask, then xor in Java
-            long str_mask = JsonSimd.computeStrMask(quote_bits, prev_iter_inside_quote)
-                        ^ prev_iter_inside_quote;
-            // System.out.println("str_mask " + str_mask);
+            long strMasks = JsonSimd.computeStrMask(quoteBits, prevIterInsideQuote)
+                        ^ prevIterInsideQuote;
+            // System.out.println("strMasks " + strMasks);
             // arithmetic right‑shift will sign‑extend, giving you 0xFFFF… or 0x0000…
-            prev_iter_inside_quote = str_mask >> 63;
-// System.out.println("prev_iter_inside_quote " + prev_iter_inside_quote);
+            prevIterInsideQuote = strMasks >> 63;
+        // System.out.println("prevIterInsideQuote " + prevIterInsideQuote);
             // Step 4: Update structural character bitmaps.
-            long tmp = ~str_mask;
+            long tmp = ~strMasks;
             colonbit  &= tmp;
             lbracebit &= tmp;
             rbracebit &= tmp;
@@ -199,90 +199,90 @@ public class SerialBitmap extends Bitmap {
             rbracketbit &= tmp;
 
             // Step 5: Generate leveled bitmaps.
-            lb_mask = lbracebit | lbracketbit;
-            rb_mask = rbracebit | rbracketbit;
-            cb_mask = lb_mask | rb_mask;
-            lb_bit = lb_mask & -lb_mask;
-            rb_bit = rb_mask & -rb_mask;
+            lbMask = lbracebit | lbracketbit;
+            rbMask = rbracebit | rbracketbit;
+            cbMask = lbMask | rbMask;
+            lbBit = lbMask & -lbMask;
+            rbBit = rbMask & -rbMask;
 
-            if (cb_mask == 0) {
-                if (cur_level >= 0 && cur_level <= mDepth) {
+            if (cbMask == 0) {
+                if (curLevel >= 0 && curLevel <= mDepth) {
                     // Allocate final level arrays if needed.
-                    if (mLevColonBitmap[cur_level] == null) {
-                        mLevColonBitmap[cur_level] = new long[(int) mNumWords];
+                    if (mLevColonBitmap[curLevel] == null) {
+                        mLevColonBitmap[curLevel] = new long[(int) mNumWords];
                     }
-                    if (mLevCommaBitmap[cur_level] == null) {
-                        mLevCommaBitmap[cur_level] = new long[(int) mNumWords];
+                    if (mLevCommaBitmap[curLevel] == null) {
+                        mLevCommaBitmap[curLevel] = new long[(int) mNumWords];
                     }
                     if (colonbit != 0) {
-                        mLevColonBitmap[cur_level][top_word] = colonbit;
+                        mLevColonBitmap[curLevel][topWord] = colonbit;
                     } else {
-                        mLevCommaBitmap[cur_level][top_word] = commabit;
+                        mLevCommaBitmap[curLevel][topWord] = commabit;
                     }
                 }
             } else {
                 first = 1;
-                // The loop continues while there are still bits in cb_mask or first is nonzero.
-                while (cb_mask != 0 || first != 0) {
+                // The loop continues while there are still bits in cbMask or first is nonzero.
+                while (cbMask != 0 || first != 0) {
     
-                    if (cb_mask == 0) {
+                    if (cbMask == 0) {
                         second = 1L << 63;
                     } else {
-                        cb_bit = cb_mask & -cb_mask;
-                        second = cb_bit;
+                        cbBit = cbMask & -cbMask;
+                        second = cbBit;
 
-                        if (cur_level >= 0 && cur_level <= mDepth) {
-                            if (mLevColonBitmap[cur_level] == null) {
-                                mLevColonBitmap[cur_level] = new long[(int) mNumWords];
+                        if (curLevel >= 0 && curLevel <= mDepth) {
+                            if (mLevColonBitmap[curLevel] == null) {
+                                mLevColonBitmap[curLevel] = new long[(int) mNumWords];
                             }
-                            if (mLevCommaBitmap[cur_level] == null) {
-                                mLevCommaBitmap[cur_level] = new long[(int) mNumWords];
+                            if (mLevCommaBitmap[curLevel] == null) {
+                                mLevCommaBitmap[curLevel] = new long[(int) mNumWords];
                             }
                             long mask = second - first;
-                            // If cb_mask is zero then set the final bit.
-                            if (cb_mask == 0) {
+                            // If cbMask is zero then set the final bit.
+                            if (cbMask == 0) {
                                 mask |= second;
                             }
-                            long colon_mask = mask & colonbit;
-                            if (colon_mask != 0) {
-                                mLevColonBitmap[cur_level][top_word] |= colon_mask;
+                            long colonMask = mask & colonbit;
+                            if (colonMask != 0) {
+                                mLevColonBitmap[curLevel][topWord] |= colonMask;
                             } else {
-                                mLevCommaBitmap[cur_level][top_word] |= (commabit & mask);
+                                mLevCommaBitmap[curLevel][topWord] |= (commabit & mask);
                             }
-                            if (cb_mask != 0) {
-                                if (cb_bit == rb_bit) {
-                                    mLevColonBitmap[cur_level][top_word] |= cb_bit;
-                                    mLevCommaBitmap[cur_level][top_word] |= cb_bit;
-                                } else if (cb_bit == lb_bit && cur_level + 1 <= mDepth) {
-                                    if (mLevCommaBitmap[cur_level + 1] == null) {
-                                        mLevCommaBitmap[cur_level + 1] = new long[(int) mNumWords];
+                            if (cbMask != 0) {
+                                if (cbBit == rbBit) {
+                                    mLevColonBitmap[curLevel][topWord] |= cbBit;
+                                    mLevCommaBitmap[curLevel][topWord] |= cbBit;
+                                } else if (cbBit == lbBit && curLevel + 1 <= mDepth) {
+                                    if (mLevCommaBitmap[curLevel + 1] == null) {
+                                        mLevCommaBitmap[curLevel + 1] = new long[(int) mNumWords];
                                     }
-                                    mLevCommaBitmap[cur_level + 1][top_word] |= cb_bit;
+                                    mLevCommaBitmap[curLevel + 1][topWord] |= cbBit;
                                 }
                             }
                         }
                     }
-                    if (cb_mask != 0) {
-                        cb_bit = cb_mask & -cb_mask; // recalc for clarity
-                        if (cb_bit == lb_bit) {
-                            lb_mask = lb_mask & (lb_mask - 1);
-                            lb_bit = lb_mask & -lb_mask;
-                            ++cur_level;
-                            if (cur_level == 0) {
-                                if (mLevCommaBitmap[cur_level] == null) {
-                                    mLevCommaBitmap[cur_level] = new long[(int) mNumWords];
+                    if (cbMask != 0) {
+                        cbBit = cbMask & -cbMask; // recalc for clarity
+                        if (cbBit == lbBit) {
+                            lbMask = lbMask & (lbMask - 1);
+                            lbBit = lbMask & -lbMask;
+                            ++curLevel;
+                            if (curLevel == 0) {
+                                if (mLevCommaBitmap[curLevel] == null) {
+                                    mLevCommaBitmap[curLevel] = new long[(int) mNumWords];
                                 }
-                                mLevCommaBitmap[cur_level][top_word] |= cb_bit;
+                                mLevCommaBitmap[curLevel][topWord] |= cbBit;
                             }
-                        } else if (cb_bit == rb_bit) {
-                            rb_mask = rb_mask & (rb_mask - 1);
-                            rb_bit = rb_mask & -rb_mask;
-                            --cur_level;
+                        } else if (cbBit == rbBit) {
+                            rbMask = rbMask & (rbMask - 1);
+                            rbBit = rbMask & -rbMask;
+                            --curLevel;
                         }
                         first = second;
-                        cb_mask = cb_mask & (cb_mask - 1);
-                        if (cur_level > max_positive_level) {
-                            max_positive_level = cur_level;
+                        cbMask = cbMask & (cbMask - 1);
+                        if (curLevel > maxPosLevel) {
+                            maxPosLevel = curLevel;
                         }
                     } else {
                         first = 0;
@@ -291,9 +291,9 @@ public class SerialBitmap extends Bitmap {
             }
         }
         if (mDepth == MAX_LEVEL - 1) {
-            mDepth = max_positive_level;
+            mDepth = maxPosLevel;
         }
-        System.out.println("cur level " + cur_level);
+        System.out.println("cur level " + curLevel);
 
 // for (int lvl = 0; lvl < mLevColonBitmap.length; lvl++) {
 //     long[] row = mLevColonBitmap[lvl];
